@@ -1,7 +1,7 @@
 import { ExtractedPatientData } from '../types';
 
 const GEMINI_API_KEY = import.meta.env.VITE_GEMINI_API_KEY;
-const GEMINI_API_URL = 'https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent';
+const GEMINI_API_URL = 'https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash-latest:generateContent';
 
 export const extractPatientData = async (transcript: string): Promise<ExtractedPatientData> => {
   if (!GEMINI_API_KEY) {
