@@ -36,9 +36,9 @@ function App() {
     setErrorMessage(null);
 
     try {
-      const extractedData = await extractPatientData(transcript);
+      const aiJson = await extractPatientData(transcript);
 
-      await savePatientVisit(transcript, extractedData);
+      await savePatientVisit(transcript, aiJson);
 
       setSuccessMessage('Patient check-in saved successfully!');
 

@@ -64,12 +64,5 @@ export async function processTranscriptWithGemini(transcript) {
 }
 
 export async function extractPatientData(transcript) {
-  const result = await processTranscriptWithGemini(transcript);
-
-  return {
-    patient_name: result.patient_data?.name || null,
-    age: result.patient_data?.age || null,
-    symptoms: result.symptoms_data?.primary_symptom ? [result.symptoms_data.primary_symptom] : null,
-    duration: result.symptoms_data?.duration || null,
-  };
+  return await processTranscriptWithGemini(transcript);
 }

@@ -3,33 +3,37 @@ import { ExtractedPatientData, PatientVisit } from '../types';
 
 export const savePatientVisit = async (
   transcript: string,
-  extractedData: ExtractedPatientData
+  aiJson: any
 ): Promise<PatientVisit> => {
+  console.log("Vector Protocol: Attempting to save to Supabase...", {
+    raw_transcript: transcript,
+    patient_data: aiJson.patient_data,
+    symptoms_data: aiJson.symptoms_data
+  });
+
   const { data, error } = await supabase
     .from('patient_visits')
-    .insert({
-      raw_transcript: transcript,
-      patient_data: {
-        patient_name: extractedData.patient_name,
-        age: extractedData.age,
-      },
-      symptoms_data: {
-        symptoms: extractedData.symptoms,
-        duration: extractedData.duration,
-      },
-    })
-    .select()
-    .single();
+    .insert([
+      {
+        raw_transcript: transcript,
+        patient_data: aiJson.patient_data,
+        symptoms_data: aiJson.symptoms_data,
+      }
+    ])
+    .select();
 
   if (error) {
-    throw new Error(`Failed to save patient visit: ${error.message}`);
+    console.error("CRITICAL DATABASE FAILURE:", error.message, error.details);
+    throw new Error(`Database Error: ${error.message}`);
   }
 
-  if (!data) {
+  console.log("SUCCESS: Data secured in Vault.", data);
+
+  if (!data || data.length === 0) {
     throw new Error('No data returned after saving patient visit');
   }
 
-  return data as PatientVisit;
+  return data[0] as PatientVisit;
 };
 
 export const getRecentVisits = async (limit: number = 10): Promise<PatientVisit[]> => {
