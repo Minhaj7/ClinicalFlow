@@ -13,7 +13,7 @@ import {
 } from 'lucide-react';
 import { DashboardHeader } from '../components/DashboardHeader';
 import { ProblemModal } from '../components/ProblemModal';
-import { getPatientProblems, getHealthcareProvider } from '../services/ehrService';
+import { getPatientProblems, ensureHealthcareProvider } from '../services/ehrService';
 import { searchPatients } from '../services/databaseService';
 import { Problem, Patient } from '../types';
 import { supabase } from '../lib/supabase';
@@ -38,6 +38,7 @@ export const ProblemList = () => {
   const [patientSearchTerm, setPatientSearchTerm] = useState('');
   const [patientSearchResults, setPatientSearchResults] = useState<Patient[]>([]);
   const [providerId, setProviderId] = useState<string | null>(null);
+  const [isLoadingProvider, setIsLoadingProvider] = useState(true);
   const [successMessage, setSuccessMessage] = useState<string | null>(null);
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
 
@@ -85,13 +86,15 @@ export const ProblemList = () => {
 
   const loadProviderInfo = async () => {
     if (!user) return;
+    setIsLoadingProvider(true);
     try {
-      const provider = await getHealthcareProvider(user.id);
-      if (provider) {
-        setProviderId(provider.id);
-      }
+      const provider = await ensureHealthcareProvider(user.id);
+      setProviderId(provider?.id || null);
     } catch (error) {
       console.error('Error loading provider info:', error);
+      setProviderId(null);
+    } finally {
+      setIsLoadingProvider(false);
     }
   };
 
@@ -154,11 +157,24 @@ export const ProblemList = () => {
       setErrorMessage('Please select a patient first');
       return;
     }
+    if (isLoadingProvider) {
+      setErrorMessage('Loading provider information, please wait...');
+      return;
+    }
+    if (!providerId) {
+      setErrorMessage('You need to be registered as a healthcare provider to add problems. Please complete your profile setup.');
+      return;
+    }
+    setErrorMessage(null);
     setSelectedProblem(null);
     setShowProblemModal(true);
   };
 
   const handleEditProblem = (problem: Problem) => {
+    if (!providerId) {
+      setErrorMessage('You need to be registered as a healthcare provider to edit problems.');
+      return;
+    }
     setSelectedProblem(problem);
     setShowProblemModal(true);
   };
@@ -235,6 +251,22 @@ export const ProblemList = () => {
             <div className="mb-6 bg-red-50 border border-red-200 rounded-lg p-4 flex items-center gap-3">
               <AlertCircle className="w-5 h-5 text-red-600" />
               <p className="text-sm font-medium text-red-800">{errorMessage}</p>
+            </div>
+          )}
+
+          {isLoadingProvider && (
+            <div className="mb-6 bg-blue-50 border border-blue-200 rounded-lg p-4 flex items-center gap-3">
+              <div className="h-5 w-5 animate-spin rounded-full border-2 border-blue-600 border-r-transparent" />
+              <p className="text-sm font-medium text-blue-800">Setting up provider access...</p>
+            </div>
+          )}
+
+          {!isLoadingProvider && !providerId && (
+            <div className="mb-6 bg-amber-50 border border-amber-200 rounded-lg p-4 flex items-center gap-3">
+              <AlertCircle className="w-5 h-5 text-amber-600" />
+              <p className="text-sm font-medium text-amber-800">
+                Provider access not available. Please ensure your profile is complete with a valid clinic name.
+              </p>
             </div>
           )}
 
