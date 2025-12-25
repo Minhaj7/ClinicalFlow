@@ -1,4 +1,5 @@
 import { useState, useEffect } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { Calendar, AlertTriangle, Users, Activity, Pill, FileText, TrendingUp, Clock } from 'lucide-react';
 import { getDashboardStats, getClinicalAlerts, getAppointments, getHealthcareProvider } from '../services/ehrService';
 import { supabase } from '../lib/supabase';
@@ -11,6 +12,7 @@ interface DashboardStats {
 }
 
 export const EHRDashboard = () => {
+  const navigate = useNavigate();
   const [stats, setStats] = useState<DashboardStats>({
     todayAppointments: 0,
     pendingAlerts: 0,
@@ -214,28 +216,32 @@ export const EHRDashboard = () => {
 
       <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
         <QuickActionCard
-          icon={<FileText className="w-6 h-6" />}
-          title="Encounter Notes"
-          description="Document visits"
+          icon={<Calendar className="w-6 h-6" />}
+          title="Appointments"
+          description="View & schedule"
           color="blue"
+          onClick={() => navigate('/appointments')}
         />
         <QuickActionCard
           icon={<Pill className="w-6 h-6" />}
           title="Medications"
           description="Prescribe & manage"
           color="green"
+          onClick={() => navigate('/medications')}
         />
         <QuickActionCard
           icon={<TrendingUp className="w-6 h-6" />}
           title="Problem List"
           description="Track diagnoses"
-          color="purple"
+          color="orange"
+          onClick={() => navigate('/problem-list')}
         />
         <QuickActionCard
-          icon={<Calendar className="w-6 h-6" />}
-          title="Schedule"
-          description="Book appointments"
-          color="orange"
+          icon={<Users className="w-6 h-6" />}
+          title="Patients"
+          description="Manage records"
+          color="purple"
+          onClick={() => navigate('/patients')}
         />
       </div>
     </div>
@@ -274,9 +280,10 @@ interface QuickActionCardProps {
   title: string;
   description: string;
   color: 'blue' | 'green' | 'purple' | 'orange';
+  onClick?: () => void;
 }
 
-const QuickActionCard = ({ icon, title, description, color }: QuickActionCardProps) => {
+const QuickActionCard = ({ icon, title, description, color, onClick }: QuickActionCardProps) => {
   const colorClasses = {
     blue: 'from-blue-500 to-blue-600',
     green: 'from-green-500 to-green-600',
@@ -285,7 +292,10 @@ const QuickActionCard = ({ icon, title, description, color }: QuickActionCardPro
   };
 
   return (
-    <button className={`bg-gradient-to-br ${colorClasses[color]} rounded-xl p-4 text-white hover:shadow-lg transition-all`}>
+    <button
+      onClick={onClick}
+      className={`bg-gradient-to-br ${colorClasses[color]} rounded-xl p-4 text-white hover:shadow-lg hover:scale-105 transition-all cursor-pointer`}
+    >
       <div className="flex flex-col items-center text-center">
         <div className="mb-2">{icon}</div>
         <p className="font-semibold text-sm mb-1">{title}</p>

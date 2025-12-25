@@ -1,6 +1,6 @@
 import { useState, useEffect, useRef } from 'react';
 import { useNavigate, useLocation } from 'react-router-dom';
-import { Activity, Settings, LogOut, ChevronDown, User, LayoutDashboard, Users } from 'lucide-react';
+import { Activity, Settings, LogOut, ChevronDown, User, LayoutDashboard, Users, Calendar, TrendingUp, Pill } from 'lucide-react';
 import { supabase } from '../lib/supabase';
 import { useProfile } from '../contexts/ProfileContext';
 
@@ -61,6 +61,39 @@ export const DashboardHeader = () => {
               >
                 <Users className="w-4 h-4" />
                 Patients
+              </button>
+              <button
+                onClick={() => navigate('/appointments')}
+                className={`flex items-center gap-2 px-4 py-2 rounded-lg font-medium transition-colors ${
+                  isActive('/appointments')
+                    ? 'bg-blue-50 text-blue-700'
+                    : 'text-slate-600 hover:bg-slate-50 hover:text-slate-900'
+                }`}
+              >
+                <Calendar className="w-4 h-4" />
+                Appointments
+              </button>
+              <button
+                onClick={() => navigate('/problem-list')}
+                className={`flex items-center gap-2 px-4 py-2 rounded-lg font-medium transition-colors ${
+                  isActive('/problem-list')
+                    ? 'bg-blue-50 text-blue-700'
+                    : 'text-slate-600 hover:bg-slate-50 hover:text-slate-900'
+                }`}
+              >
+                <TrendingUp className="w-4 h-4" />
+                Problems
+              </button>
+              <button
+                onClick={() => navigate('/medications')}
+                className={`flex items-center gap-2 px-4 py-2 rounded-lg font-medium transition-colors ${
+                  isActive('/medications')
+                    ? 'bg-blue-50 text-blue-700'
+                    : 'text-slate-600 hover:bg-slate-50 hover:text-slate-900'
+                }`}
+              >
+                <Pill className="w-4 h-4" />
+                Medications
               </button>
             </nav>
           </div>

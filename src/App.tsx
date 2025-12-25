@@ -7,6 +7,9 @@ import { Contact } from './pages/Contact';
 import { Auth } from './components/Auth';
 import { Dashboard } from './pages/Dashboard';
 import { Patients } from './pages/Patients';
+import { Appointments } from './pages/Appointments';
+import { ProblemList } from './pages/ProblemList';
+import { Medications } from './pages/Medications';
 import { Settings } from './pages/Settings';
 import { EHRInfo } from './pages/EHRInfo';
 import { ProfileProvider } from './contexts/ProfileContext';
@@ -34,6 +37,30 @@ function App() {
             element={
               <ProtectedRoute>
                 <Patients />
+              </ProtectedRoute>
+            }
+          />
+          <Route
+            path="/appointments"
+            element={
+              <ProtectedRoute>
+                <Appointments />
+              </ProtectedRoute>
+            }
+          />
+          <Route
+            path="/problem-list"
+            element={
+              <ProtectedRoute>
+                <ProblemList />
+              </ProtectedRoute>
+            }
+          />
+          <Route
+            path="/medications"
+            element={
+              <ProtectedRoute>
+                <Medications />
               </ProtectedRoute>
             }
           />
