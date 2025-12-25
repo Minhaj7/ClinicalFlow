@@ -6,6 +6,7 @@ interface Profile {
   id: string;
   full_name: string;
   clinic_name: string;
+  facility_type: string;
   phone_number: string;
   created_at: string;
   updated_at: string;

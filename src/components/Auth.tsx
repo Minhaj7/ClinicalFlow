@@ -11,6 +11,7 @@ export const Auth = () => {
   const [password, setPassword] = useState('');
   const [fullName, setFullName] = useState('');
   const [clinicName, setClinicName] = useState('');
+  const [facilityType, setFacilityType] = useState('Clinic');
   const [phoneNumber, setPhoneNumber] = useState('');
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -57,6 +58,7 @@ export const Auth = () => {
               id: data.user.id,
               full_name: fullName,
               clinic_name: clinicName,
+              facility_type: facilityType,
               phone_number: phoneNumber,
             });
 
@@ -145,7 +147,7 @@ export const Auth = () => {
                     htmlFor="clinicName"
                     className="block text-sm font-semibold text-slate-700 mb-2"
                   >
-                    Clinic Name
+                    Facility Name
                   </label>
                   <input
                     id="clinicName"
@@ -156,6 +158,26 @@ export const Auth = () => {
                     className="w-full px-4 py-3 border border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all"
                     placeholder="City Medical Center"
                   />
+                </div>
+
+                <div>
+                  <label
+                    htmlFor="facilityType"
+                    className="block text-sm font-semibold text-slate-700 mb-2"
+                  >
+                    Facility Type
+                  </label>
+                  <select
+                    id="facilityType"
+                    value={facilityType}
+                    onChange={(e) => setFacilityType(e.target.value)}
+                    required
+                    className="w-full px-4 py-3 border border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all bg-white"
+                  >
+                    <option value="Hospital">Hospital</option>
+                    <option value="Clinic">Clinic</option>
+                    <option value="RHC">RHC (Rural Health Center)</option>
+                  </select>
                 </div>
 
                 <div>
