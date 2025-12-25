@@ -147,12 +147,11 @@ export const createPatient = async (
 
 export const searchPatients = async (
   searchTerm: string,
-  receptionistId: string
+  receptionistId?: string
 ): Promise<Patient[]> => {
   let query = supabase
     .from('patients')
-    .select('*')
-    .eq('receptionist_id', receptionistId);
+    .select('*');
 
   if (searchTerm) {
     query = query.or(
@@ -167,6 +166,20 @@ export const searchPatients = async (
   }
 
   return (data as Patient[]) || [];
+};
+
+export const getPatientByCNIC = async (cnic: string): Promise<Patient | null> => {
+  const { data, error } = await supabase
+    .from('patients')
+    .select('*')
+    .eq('cnic', cnic)
+    .maybeSingle();
+
+  if (error) {
+    throw new Error(`Failed to fetch patient by CNIC: ${error.message}`);
+  }
+
+  return data as Patient | null;
 };
 
 export const getPatientById = async (patientId: string): Promise<Patient | null> => {

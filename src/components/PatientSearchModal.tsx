@@ -39,8 +39,8 @@ export default function PatientSearchModal({
 
   const loadRecentPatients = async () => {
     try {
-      const patients = await getRecentPatients(receptionistId, 10);
-      setRecentPatients(patients);
+      const patients = await searchPatients('', receptionistId);
+      setRecentPatients(patients.slice(0, 10));
     } catch (error) {
       console.error('Failed to load recent patients:', error);
     }
@@ -49,7 +49,7 @@ export default function PatientSearchModal({
   const performSearch = async () => {
     setLoading(true);
     try {
-      const results = await searchPatients(searchTerm, receptionistId);
+      const results = await searchPatients(searchTerm);
       setSearchResults(results);
     } catch (error) {
       console.error('Search failed:', error);
@@ -147,6 +147,12 @@ export default function PatientSearchModal({
             >
               <X className="w-5 h-5" />
             </button>
+          </div>
+
+          <div className="mb-3">
+            <p className="text-sm text-blue-600 bg-blue-50 border border-blue-200 rounded-lg px-3 py-2">
+              Search across all facilities - Patient records are shared system-wide via CNIC
+            </p>
           </div>
 
           <div className="relative">

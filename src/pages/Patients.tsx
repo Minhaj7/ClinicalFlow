@@ -63,7 +63,7 @@ export const Patients = () => {
 
     try {
       setIsLoading(true);
-      const allPatients = await searchPatients('', user.id);
+      const allPatients = await searchPatients('');
       setPatients(allPatients);
       setFilteredPatients(allPatients);
     } catch (error) {
@@ -161,7 +161,7 @@ export const Patients = () => {
 
       <main className="max-w-7xl mx-auto px-6 py-8">
         <div className="mb-8">
-          <div className="flex items-center justify-between mb-6">
+          <div className="flex items-center justify-between mb-4">
             <div className="flex items-center gap-3">
               <Users className="w-8 h-8 text-blue-600" />
               <div>
@@ -178,6 +178,18 @@ export const Patients = () => {
               <UserPlus className="w-5 h-5" />
               Add New Patient
             </button>
+          </div>
+
+          <div className="mb-6 bg-blue-50 border border-blue-200 rounded-lg p-4">
+            <div className="flex items-start gap-3">
+              <AlertCircle className="w-5 h-5 text-blue-600 flex-shrink-0 mt-0.5" />
+              <div>
+                <h3 className="text-sm font-semibold text-blue-900 mb-1">Cross-Facility Patient Records</h3>
+                <p className="text-sm text-blue-700">
+                  All patient records are accessible across hospitals, clinics, and RHCs. Search by CNIC to view complete medical history from any facility.
+                </p>
+              </div>
+            </div>
           </div>
 
           {successMessage && (
