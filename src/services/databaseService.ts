@@ -20,14 +20,9 @@ export const savePatientVisit = async (
 ): Promise<PatientVisit> => {
   const patientData = aiJson.patient_data || {};
   const symptomsData = aiJson.symptoms_data || [];
-
-  console.log("Vector Protocol: Attempting to save to Supabase...", {
-    raw_transcript: transcript,
-    patient_data: patientData,
-    symptoms_data: symptomsData,
-    receptionist_id: receptionistId,
-    patient_id: patientId
-  });
+  const vitalsData = aiJson.vitals_data || null;
+  const testsData = aiJson.tests_data || [];
+  const medicinesData = aiJson.medicines_data || [];
 
   const visitData: any = {
     raw_transcript: transcript,
@@ -56,17 +51,51 @@ export const savePatientVisit = async (
     visitData.facility_name = facilityName;
   }
 
+  if (vitalsData && Object.values(vitalsData).some(v => v !== '' && v !== null)) {
+    const formattedVitals: any = {};
+    if (vitalsData.bloodPressureSystolic && vitalsData.bloodPressureDiastolic) {
+      formattedVitals.blood_pressure = `${vitalsData.bloodPressureSystolic}/${vitalsData.bloodPressureDiastolic}`;
+    }
+    if (vitalsData.temperature) {
+      formattedVitals.temperature = vitalsData.temperature;
+      formattedVitals.temperature_unit = vitalsData.temperatureUnit || 'F';
+    }
+    if (vitalsData.pulseRate) formattedVitals.pulse_rate = vitalsData.pulseRate;
+    if (vitalsData.respiratoryRate) formattedVitals.respiratory_rate = vitalsData.respiratoryRate;
+    if (vitalsData.oxygenSaturation) formattedVitals.oxygen_saturation = vitalsData.oxygenSaturation;
+    if (vitalsData.weight) formattedVitals.weight = vitalsData.weight;
+    if (vitalsData.height) formattedVitals.height = vitalsData.height;
+
+    if (Object.keys(formattedVitals).length > 0) {
+      visitData.vitals_data = formattedVitals;
+    }
+  }
+
+  if (testsData && testsData.length > 0) {
+    visitData.tests_data = testsData.map((test: any) => ({
+      name: test.testName || test.name,
+      result: test.result,
+      notes: test.notes
+    })).filter((t: any) => t.name);
+  }
+
+  if (medicinesData && medicinesData.length > 0) {
+    visitData.medicines_data = medicinesData.filter((m: any) => m.name);
+  }
+
+  if (transcript && transcript !== 'Manual check-in') {
+    visitData.visit_notes = transcript;
+  }
+
   const { data, error } = await supabase
     .from('patient_visits')
     .insert([visitData])
     .select();
 
   if (error) {
-    console.error("CRITICAL DATABASE FAILURE:", error.message, error.details);
+    console.error("Database error saving patient visit:", error.message);
     throw new Error(`Database Error: ${error.message}`);
   }
-
-  console.log("SUCCESS: Data secured in Vault.", data);
 
   if (!data || data.length === 0) {
     throw new Error('No data returned after saving patient visit');
