@@ -54,11 +54,11 @@ export const EditPatientDialog = ({ visit, isOpen, onClose, onSave, onRefresh }:
       symptoms_data: symptoms,
     };
 
-    console.log("Vector Debug: Attempting to save...", formData);
-    console.log("Vector Debug: Patient Visit ID:", visit.id);
+    alert(`DEBUG: The ID I am trying to update is: ${visit.id}`);
+    console.log("Full Visit Object:", visit);
 
     if (!visit.id) {
-      alert("CRITICAL ERROR: Patient ID is missing. Cannot update.");
+      alert("STOP! The ID is undefined. The Modal is not receiving the ID correctly.");
       return;
     }
 
@@ -76,13 +76,16 @@ export const EditPatientDialog = ({ visit, isOpen, onClose, onSave, onRefresh }:
         .select();
 
       if (error) {
-        console.error("Supabase Update Error:", error);
-        alert(`Error: ${error.message}`);
+        alert(`Supabase Error: ${error.message}`);
         setIsSaving(false);
         return;
       }
 
-      if (data && data.length > 0) {
+      if (!data || data.length === 0) {
+        alert(`FAIL: Database returned 0 rows. It means NO row exists with ID: ${visit.id}`);
+        setIsSaving(false);
+      } else {
+        alert("SUCCESS: Update worked!");
         console.log("Update Success:", data[0]);
 
         await onSave(formData);
@@ -92,10 +95,6 @@ export const EditPatientDialog = ({ visit, isOpen, onClose, onSave, onRefresh }:
         }
 
         onClose();
-      } else {
-        console.warn("Update ran, but no data was returned. Possible RLS policy issue.");
-        alert("Update ran, but no data was returned. Check RLS policies.");
-        setIsSaving(false);
       }
     } catch (error) {
       console.error('Error saving patient data:', error);
