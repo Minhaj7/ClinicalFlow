@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { Stethoscope, CheckCircle, AlertTriangle, LogOut, User as UserIcon } from 'lucide-react';
+import { Stethoscope, CheckCircle, LogOut, User as UserIcon } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import { RecordingInterface } from '../components/RecordingInterface';
 import { RecentCheckIns } from '../components/RecentCheckIns';
@@ -17,7 +17,6 @@ export const Dashboard = () => {
   const [isProcessing, setIsProcessing] = useState(false);
   const [successMessage, setSuccessMessage] = useState<string | null>(null);
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
-  const [showDebug, setShowDebug] = useState(false);
 
   const supabaseUrl = import.meta.env.VITE_SUPABASE_URL;
   const supabaseKey = import.meta.env.VITE_SUPABASE_ANON_KEY;
@@ -196,61 +195,6 @@ export const Dashboard = () => {
       </header>
 
       <main className="py-8">
-        <div className="max-w-4xl mx-auto px-8 mb-6">
-          <button
-            onClick={() => setShowDebug(!showDebug)}
-            className="bg-gray-800 text-white px-4 py-2 border-2 border-black font-bold hover:bg-gray-700 flex items-center gap-2"
-          >
-            <AlertTriangle className="w-5 h-5" />
-            {showDebug ? 'Hide' : 'Show'} Debug Panel
-          </button>
-        </div>
-
-        {showDebug && (
-          <div className="max-w-4xl mx-auto px-8 mb-6">
-            <div className="bg-yellow-100 border-4 border-black p-6">
-              <h3 className="text-2xl font-bold text-black mb-4">Debug Status</h3>
-
-              <div className="space-y-3 mb-6">
-                <div className="flex items-center gap-2">
-                  <span className={`w-4 h-4 rounded-full ${supabaseUrl ? 'bg-green-600' : 'bg-red-600'}`}></span>
-                  <span className="text-lg font-bold">Supabase URL:</span>
-                  <span className="text-lg">{supabaseUrl ? 'Present' : 'MISSING'}</span>
-                </div>
-                <div className="flex items-center gap-2">
-                  <span className={`w-4 h-4 rounded-full ${supabaseKey ? 'bg-green-600' : 'bg-red-600'}`}></span>
-                  <span className="text-lg font-bold">Supabase Key:</span>
-                  <span className="text-lg">{supabaseKey ? 'Present' : 'MISSING'}</span>
-                </div>
-                <div className="flex items-center gap-2">
-                  <span className={`w-4 h-4 rounded-full ${geminiKey ? 'bg-green-600' : 'bg-red-600'}`}></span>
-                  <span className="text-lg font-bold">Gemini API Key:</span>
-                  <span className="text-lg">{geminiKey ? 'Present' : 'MISSING'}</span>
-                </div>
-              </div>
-
-              <div className="flex gap-4">
-                <button
-                  onClick={testConnection}
-                  className="bg-blue-600 text-white px-6 py-3 border-2 border-black font-bold hover:bg-blue-700"
-                >
-                  Test Database Connection
-                </button>
-                <button
-                  onClick={testAIExtraction}
-                  className="bg-green-600 text-white px-6 py-3 border-2 border-black font-bold hover:bg-green-700"
-                >
-                  Test AI Extraction
-                </button>
-              </div>
-
-              <div className="mt-4 p-4 bg-white border-2 border-black">
-                <p className="text-sm font-bold text-black">Tip: Open browser console (F12) to see detailed logs</p>
-              </div>
-            </div>
-          </div>
-        )}
-
         {successMessage && (
           <div className="max-w-4xl mx-auto px-8 mb-6">
             <div className="bg-white border-4 border-black p-6 flex items-center gap-4">
