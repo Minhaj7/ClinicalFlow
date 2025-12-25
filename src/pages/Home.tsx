@@ -30,13 +30,27 @@ export const Home = () => {
 
   return (
     <div className="bg-white">
+      <div className="bg-gradient-to-r from-blue-600 to-purple-600 text-white py-3 px-6">
+        <div className="max-w-6xl mx-auto text-center">
+          <p className="text-sm md:text-base font-semibold">
+            🎉 NEW: Complete EHR System Now Available!{' '}
+            <button
+              onClick={() => navigate('/ehr-info')}
+              className="underline hover:text-blue-100 transition-colors"
+            >
+              Explore All Features →
+            </button>
+          </p>
+        </div>
+      </div>
+
       <section className="py-20 px-6">
         <div className="max-w-5xl mx-auto text-center">
           <h1 className="text-5xl md:text-6xl font-bold text-slate-900 mb-6 leading-tight">
-            Stop Typing. Just Speak.
+            Complete Electronic Health Records
           </h1>
           <p className="text-xl md:text-2xl text-slate-600 mb-10 max-w-3xl mx-auto leading-relaxed">
-            The first AI medical assistant that understands 'Halka Bukhar', 'Pait Dard', and 'High BP' in your accent. Turn your voice into patient records in seconds.
+            From simple EMR to full EHR: Multi-organization support, RBAC, care coordination, e-prescribing, billing, and more. Enterprise-grade healthcare software.
           </p>
           <div className="flex flex-col sm:flex-row items-center justify-center gap-4">
             <button
@@ -44,6 +58,12 @@ export const Home = () => {
               className="px-8 py-4 bg-blue-600 text-white text-lg font-semibold rounded-lg hover:bg-blue-700 transition-colors shadow-lg hover:shadow-xl"
             >
               Start Patient Check-in (Free Forever)
+            </button>
+            <button
+              onClick={() => navigate('/ehr-info')}
+              className="px-8 py-4 bg-white text-blue-600 text-lg font-semibold rounded-lg hover:bg-gray-50 transition-colors border-2 border-blue-600"
+            >
+              View EHR Features
             </button>
           </div>
         </div>

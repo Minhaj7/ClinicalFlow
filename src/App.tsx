@@ -8,6 +8,7 @@ import { Auth } from './components/Auth';
 import { Dashboard } from './pages/Dashboard';
 import { Patients } from './pages/Patients';
 import { Settings } from './pages/Settings';
+import { EHRInfo } from './pages/EHRInfo';
 import { ProfileProvider } from './contexts/ProfileContext';
 
 function App() {
@@ -18,6 +19,7 @@ function App() {
           <Route path="/" element={<Layout><Home /></Layout>} />
           <Route path="/about" element={<Layout><About /></Layout>} />
           <Route path="/contact" element={<Layout><Contact /></Layout>} />
+          <Route path="/ehr-info" element={<Layout><EHRInfo /></Layout>} />
           <Route path="/auth" element={<Auth />} />
           <Route
             path="/dashboard"
