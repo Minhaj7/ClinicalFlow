@@ -1,5 +1,5 @@
 import { useNavigate } from 'react-router-dom';
-import { Zap, MessageCircle, Lock, Play } from 'lucide-react';
+import { Zap, MessageCircle, Lock } from 'lucide-react';
 
 export const Home = () => {
   const navigate = useNavigate();
@@ -20,13 +20,6 @@ export const Home = () => {
               className="px-8 py-4 bg-blue-600 text-white text-lg font-semibold rounded-lg hover:bg-blue-700 transition-colors shadow-lg hover:shadow-xl"
             >
               Start Patient Check-in (Free Forever)
-            </button>
-            <button
-              onClick={() => navigate('/about')}
-              className="px-8 py-4 bg-white text-blue-600 text-lg font-semibold rounded-lg border-2 border-blue-600 hover:bg-blue-50 transition-colors flex items-center gap-2"
-            >
-              <Play className="w-5 h-5" />
-              Watch the 30-Second Demo
             </button>
           </div>
         </div>
