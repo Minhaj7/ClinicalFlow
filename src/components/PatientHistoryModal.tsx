@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { X, User, Activity, FileText, Heart, Upload, Download, Calendar, Clock } from 'lucide-react';
+import { X, User, Activity, FileText, Heart, Upload, Download, Calendar, Clock, FileDown } from 'lucide-react';
 import { Patient, PatientVisit, MedicalTest, VitalSigns, PatientMedicalHistory } from '../types';
 import {
   getPatientVisits,
@@ -8,6 +8,7 @@ import {
   getMedicalHistory
 } from '../services/databaseService';
 import { getSignedUrl } from '../services/storageService';
+import { generateVisitReportPDF } from '../services/pdfService';
 
 interface PatientHistoryModalProps {
   isOpen: boolean;
@@ -65,6 +66,10 @@ export const PatientHistoryModal = ({ isOpen, onClose, patient, onUploadTests }:
       console.error('Failed to download file:', error);
       alert('Failed to download file. Please try again.');
     }
+  };
+
+  const handleDownloadVisitPDF = (visit: PatientVisit) => {
+    generateVisitReportPDF(visit, patient);
   };
 
   const formatDate = (dateString: string) => {
@@ -179,9 +184,19 @@ export const PatientHistoryModal = ({ isOpen, onClose, patient, onUploadTests }:
                               {formatDate(visit.created_at)}
                             </p>
                           </div>
-                          {visit.doctor_name && (
-                            <span className="text-sm text-gray-600">Dr. {visit.doctor_name}</span>
-                          )}
+                          <div className="flex items-center gap-2">
+                            {visit.doctor_name && (
+                              <span className="text-sm text-gray-600">Dr. {visit.doctor_name}</span>
+                            )}
+                            <button
+                              onClick={() => handleDownloadVisitPDF(visit)}
+                              className="flex items-center gap-1 px-3 py-1.5 bg-green-600 hover:bg-green-700 text-white text-xs font-medium rounded-lg transition-colors"
+                              title="Download Visit Report PDF"
+                            >
+                              <FileDown className="w-3.5 h-3.5" />
+                              PDF
+                            </button>
+                          </div>
                         </div>
 
                         {visit.symptoms_data && visit.symptoms_data.length > 0 && (

@@ -1,5 +1,6 @@
 import { PatientVisit } from '../types';
-import { Clock, User, Activity, ArrowRight, CheckCircle2, Trash2, Edit2 } from 'lucide-react';
+import { Clock, User, Activity, ArrowRight, CheckCircle2, Trash2, Edit2, Download } from 'lucide-react';
+import { generateVisitReportPDF } from '../services/pdfService';
 
 interface RecentCheckInsProps {
   visits: PatientVisit[];
@@ -50,6 +51,10 @@ export const RecentCheckIns = ({ visits, isLoading, onDelete, onEdit }: RecentCh
     if (confirmed) {
       onDelete(visit.id);
     }
+  };
+
+  const handleDownloadPDF = (visit: PatientVisit) => {
+    generateVisitReportPDF(visit, null);
   };
 
   if (isLoading) {
@@ -103,6 +108,13 @@ export const RecentCheckIns = ({ visits, isLoading, onDelete, onEdit }: RecentCh
             className="bg-white rounded-xl border border-slate-200 overflow-hidden hover:shadow-lg transition-shadow duration-200 relative"
           >
             <div className="absolute top-3 right-3 z-10 flex items-center gap-2">
+              <button
+                onClick={() => handleDownloadPDF(visit)}
+                className="p-2 bg-white hover:bg-green-50 border border-slate-200 hover:border-green-300 rounded-lg transition-all group"
+                title="Download PDF Report"
+              >
+                <Download className="w-4 h-4 text-slate-400 group-hover:text-green-600" />
+              </button>
               <button
                 onClick={() => onEdit(visit)}
                 className="p-2 bg-white hover:bg-blue-50 border border-slate-200 hover:border-blue-300 rounded-lg transition-all group"
