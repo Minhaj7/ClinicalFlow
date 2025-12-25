@@ -62,3 +62,14 @@ export async function processTranscriptWithGemini(transcript) {
 
   throw new Error("Vector Alert: All Flash models failed. Please check your Quota in Google AI Studio.");
 }
+
+export async function extractPatientData(transcript) {
+  const result = await processTranscriptWithGemini(transcript);
+
+  return {
+    patient_name: result.patient_data?.name || null,
+    age: result.patient_data?.age || null,
+    symptoms: result.symptoms_data?.primary_symptom ? [result.symptoms_data.primary_symptom] : null,
+    duration: result.symptoms_data?.duration || null,
+  };
+}
