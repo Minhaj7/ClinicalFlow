@@ -44,6 +44,8 @@ export const EditPatientDialog = ({ visit, isOpen, onClose, onSave, onRefresh }:
   };
 
   const handleSave = async () => {
+    console.log("Vector Protocol: Initiating Save...");
+
     const formData = {
       raw_transcript: rawTranscript,
       patient_data: {
@@ -54,17 +56,33 @@ export const EditPatientDialog = ({ visit, isOpen, onClose, onSave, onRefresh }:
       symptoms_data: symptoms,
     };
 
-    alert(`DEBUG: The ID I am trying to update is: ${visit.id}`);
-    console.log("Full Visit Object:", visit);
-
-    if (!visit.id) {
-      alert("STOP! The ID is undefined. The Modal is not receiving the ID correctly.");
-      return;
-    }
-
     setIsSaving(true);
 
     try {
+      // STEP 1: EXISTENCE CHECK
+      // We ask the database: "Do you have this ID?"
+      const { data: checkData, error: checkError } = await supabase
+        .from('patient_visits')
+        .select('id')
+        .eq('id', visit.id)
+        .maybeSingle();
+
+      if (checkError) {
+        alert(`DIAGNOSTIC FAIL: Database Connection Error during check.\n${checkError.message}`);
+        setIsSaving(false);
+        return;
+      }
+
+      if (!checkData) {
+        // THIS IS THE SMOKING GUN
+        alert(`CRITICAL ERROR: The Database says Patient ID ${visit.id} DOES NOT EXIST.\n\nYour list is showing 'Ghost Data'. Please refresh the page completely.`);
+        setIsSaving(false);
+        return;
+      }
+
+      // STEP 2: IF EXISTS, EXECUTE UPDATE
+      alert(`CONFIRMED: Row exists. Attempting Update on ID: ${visit.id}...`);
+
       const { data, error } = await supabase
         .from('patient_visits')
         .update({
@@ -76,16 +94,13 @@ export const EditPatientDialog = ({ visit, isOpen, onClose, onSave, onRefresh }:
         .select();
 
       if (error) {
-        alert(`Supabase Error: ${error.message}`);
+        alert(`UPDATE ERROR: ${error.message}`);
         setIsSaving(false);
-        return;
-      }
-
-      if (!data || data.length === 0) {
-        alert(`FAIL: Database returned 0 rows. It means NO row exists with ID: ${visit.id}`);
+      } else if (!data || data.length === 0) {
+        alert("UPDATE STALLED: Row exists, but Update returned 0 rows. This is 100% a Policy (RLS) block.");
         setIsSaving(false);
       } else {
-        alert("SUCCESS: Update worked!");
+        alert("SUCCESS: Data Securely Updated.");
         console.log("Update Success:", data[0]);
 
         await onSave(formData);
