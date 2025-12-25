@@ -189,7 +189,14 @@ export const Dashboard = () => {
     setShowTestUpload(true);
   };
 
-  const handleManualCheckIn = async (patientData: any, symptomsData: Symptom[], notes: string) => {
+  const handleManualCheckIn = async (
+    patientData: any,
+    symptomsData: Symptom[],
+    notes: string,
+    vitals?: any,
+    tests?: any[],
+    medicines?: any[]
+  ) => {
     if (!user) {
       setErrorMessage('You must be logged in to save patient check-ins');
       return;
@@ -207,7 +214,10 @@ export const Dashboard = () => {
     try {
       const checkInData = {
         patient_data: patientData,
-        symptoms_data: symptomsData
+        symptoms_data: symptomsData,
+        vitals_data: vitals,
+        tests_data: tests || [],
+        medicines_data: medicines || []
       };
 
       const visit = await savePatientVisit(
@@ -220,7 +230,6 @@ export const Dashboard = () => {
 
       setLastSavedVisitId(visit.id);
       setSuccessMessage('Patient check-in saved successfully!');
-      setShowVitalSigns(true);
 
       await loadRecentVisits();
 
