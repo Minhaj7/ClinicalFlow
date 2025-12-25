@@ -625,3 +625,134 @@ export const getFormularyByTherapeuticClass = async (therapeuticClass: string): 
   if (error) throw error;
   return data || [];
 };
+
+const specialtyToTherapeuticClasses: Record<string, string[]> = {
+  'cardiology': ['Cardiovascular', 'Antihypertensive', 'Anticoagulant', 'Antiarrhythmic', 'Diuretic', 'Beta Blocker', 'ACE Inhibitor', 'Calcium Channel Blocker', 'Statin'],
+  'pulmonology': ['Respiratory', 'Bronchodilator', 'Corticosteroid', 'Antihistamine', 'Mucolytic', 'Antitussive'],
+  'gastroenterology': ['Gastrointestinal', 'Antacid', 'Proton Pump Inhibitor', 'H2 Blocker', 'Antiemetic', 'Laxative', 'Antidiarrheal'],
+  'neurology': ['Neurological', 'CNS', 'Anticonvulsant', 'Antimigraine', 'Antiparkinsonian', 'Muscle Relaxant'],
+  'psychiatry': ['Psychotropic', 'Antidepressant', 'Anxiolytic', 'Antipsychotic', 'Mood Stabilizer', 'Sedative', 'Hypnotic'],
+  'dermatology': ['Dermatological', 'Topical', 'Antifungal', 'Corticosteroid', 'Antibiotic', 'Retinoid'],
+  'orthopedics': ['NSAID', 'Analgesic', 'Muscle Relaxant', 'Calcium', 'Vitamin D', 'Bisphosphonate', 'Anti-inflammatory'],
+  'pediatrics': ['Pediatric', 'Antibiotic', 'Antipyretic', 'Analgesic', 'Vitamin', 'Antihistamine', 'Respiratory'],
+  'ent': ['ENT', 'Antibiotic', 'Antihistamine', 'Decongestant', 'Corticosteroid', 'Antitussive'],
+  'ophthalmology': ['Ophthalmic', 'Eye', 'Antiglaucoma', 'Antibiotic', 'Anti-inflammatory', 'Lubricant'],
+  'endocrinology': ['Endocrine', 'Antidiabetic', 'Thyroid', 'Hormone', 'Insulin', 'Corticosteroid'],
+  'general medicine': ['Antibiotic', 'Analgesic', 'Antipyretic', 'Antihistamine', 'Antacid', 'Vitamin', 'NSAID', 'Antimicrobial'],
+  'internal medicine': ['Antibiotic', 'Analgesic', 'Antipyretic', 'Antihistamine', 'Antacid', 'Vitamin', 'NSAID', 'Antimicrobial', 'Cardiovascular'],
+  'family medicine': ['Antibiotic', 'Analgesic', 'Antipyretic', 'Antihistamine', 'Antacid', 'Vitamin', 'NSAID', 'Antimicrobial'],
+  'gynecology': ['Hormone', 'Contraceptive', 'Antibiotic', 'Antifungal', 'NSAID', 'Iron', 'Vitamin'],
+  'urology': ['Urological', 'Antibiotic', 'Alpha Blocker', 'Antimuscarinic', 'Hormone', 'Analgesic'],
+  'nephrology': ['Renal', 'Diuretic', 'Antihypertensive', 'Phosphate Binder', 'Erythropoietin', 'Vitamin D'],
+  'oncology': ['Antineoplastic', 'Chemotherapy', 'Antiemetic', 'Analgesic', 'Immunomodulator', 'Supportive Care'],
+  'rheumatology': ['Rheumatological', 'NSAID', 'DMARD', 'Corticosteroid', 'Immunosuppressant', 'Biologic', 'Analgesic'],
+  'infectious disease': ['Antibiotic', 'Antiviral', 'Antifungal', 'Antiparasitic', 'Antimicrobial', 'Vaccine'],
+};
+
+export const getQuickSelectMedicationsBySpecialty = async (specialty: string | null): Promise<DrugFormulary[]> => {
+  const normalizedSpecialty = specialty?.toLowerCase().trim() || 'general medicine';
+
+  let therapeuticClasses = specialtyToTherapeuticClasses[normalizedSpecialty];
+
+  if (!therapeuticClasses) {
+    for (const [key, classes] of Object.entries(specialtyToTherapeuticClasses)) {
+      if (normalizedSpecialty.includes(key) || key.includes(normalizedSpecialty)) {
+        therapeuticClasses = classes;
+        break;
+      }
+    }
+  }
+
+  if (!therapeuticClasses) {
+    therapeuticClasses = specialtyToTherapeuticClasses['general medicine'];
+  }
+
+  const orConditions = therapeuticClasses
+    .map(tc => `therapeutic_class.ilike.%${tc}%`)
+    .join(',');
+
+  const { data, error } = await supabase
+    .from('drug_formulary')
+    .select('*')
+    .eq('is_active', true)
+    .or(orConditions)
+    .order('medication_name', { ascending: true })
+    .limit(15);
+
+  if (error) throw error;
+  return data || [];
+};
+
+export const ensureHealthcareProvider = async (userId: string): Promise<HealthcareProvider | null> => {
+  const existingProvider = await getHealthcareProvider(userId);
+  if (existingProvider) {
+    return existingProvider;
+  }
+
+  const { data: userRole } = await supabase
+    .from('user_roles')
+    .select(`
+      *,
+      role:roles(name)
+    `)
+    .eq('user_id', userId)
+    .eq('is_active', true)
+    .maybeSingle();
+
+  if (!userRole) return null;
+
+  const roleName = userRole.role?.name;
+  const canPrescribe = ['Doctor', 'Physician', 'Nurse Practitioner', 'Pharmacist'].some(
+    r => roleName?.toLowerCase().includes(r.toLowerCase())
+  );
+
+  if (!canPrescribe) return null;
+
+  const { data: profile } = await supabase
+    .from('profiles')
+    .select('*')
+    .eq('id', userId)
+    .maybeSingle();
+
+  let organizationId = userRole.organization_id;
+
+  if (!organizationId && profile) {
+    const { data: org } = await supabase
+      .from('organizations')
+      .select('id')
+      .eq('name', profile.clinic_name)
+      .maybeSingle();
+
+    organizationId = org?.id;
+  }
+
+  if (!organizationId) return null;
+
+  const { data: newProvider, error } = await supabase
+    .from('healthcare_providers')
+    .insert({
+      user_id: userId,
+      organization_id: organizationId,
+      provider_type: roleName || 'Doctor',
+      specialty: null,
+      accepting_new_patients: true,
+      is_active: true,
+    })
+    .select()
+    .single();
+
+  if (error) {
+    console.error('Error creating healthcare provider:', error);
+    return null;
+  }
+
+  return newProvider;
+};
+
+export const getProviderWithSpecialty = async (userId: string): Promise<{ provider: HealthcareProvider | null; specialty: string | null }> => {
+  const provider = await getHealthcareProvider(userId);
+  return {
+    provider,
+    specialty: provider?.specialty || null
+  };
+};

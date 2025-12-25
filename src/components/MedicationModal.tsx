@@ -1,6 +1,6 @@
 import { useState, useEffect, useCallback, useRef } from 'react';
-import { X, Search, Calendar, AlertTriangle, Shield, Loader2 } from 'lucide-react';
-import { createMedication, updateMedication, searchFormularyMedications } from '../services/ehrService';
+import { X, Search, Calendar, AlertTriangle, Shield, Loader2, Sparkles, Pill } from 'lucide-react';
+import { createMedication, updateMedication, searchFormularyMedications, getQuickSelectMedicationsBySpecialty } from '../services/ehrService';
 import { MedicationPrescribed, DrugFormulary } from '../types';
 
 interface MedicationModalProps {
@@ -10,12 +10,13 @@ interface MedicationModalProps {
   medication?: MedicationPrescribed | null;
   patientId: string;
   providerId: string;
+  providerSpecialty?: string | null;
 }
 
 const dosageForms = ['Tablet', 'Capsule', 'Syrup', 'Injection', 'Cream', 'Ointment', 'Drops', 'Inhaler', 'Patch', 'Solution', 'Suspension', 'Powder', 'Gel', 'Spray', 'Suppository'];
 const frequencies = ['Once daily', 'Twice daily', 'Three times daily', 'Four times daily', 'Every 12 hours', 'Every 8 hours', 'Every 6 hours', 'Every 4 hours', 'As needed', 'Before meals', 'After meals', 'At bedtime', 'Weekly', 'Every other day'];
 
-export const MedicationModal = ({ isOpen, onClose, onSuccess, medication, patientId, providerId }: MedicationModalProps) => {
+export const MedicationModal = ({ isOpen, onClose, onSuccess, medication, patientId, providerId, providerSpecialty }: MedicationModalProps) => {
   const [isLoading, setIsLoading] = useState(false);
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
   const [medicationSearch, setMedicationSearch] = useState('');
@@ -23,6 +24,8 @@ export const MedicationModal = ({ isOpen, onClose, onSuccess, medication, patien
   const [formularyResults, setFormularyResults] = useState<DrugFormulary[]>([]);
   const [isSearching, setIsSearching] = useState(false);
   const [selectedFormularyMed, setSelectedFormularyMed] = useState<DrugFormulary | null>(null);
+  const [quickSelectMeds, setQuickSelectMeds] = useState<DrugFormulary[]>([]);
+  const [isLoadingQuickSelect, setIsLoadingQuickSelect] = useState(false);
   const searchTimeoutRef = useRef<NodeJS.Timeout | null>(null);
 
   const [formData, setFormData] = useState({
@@ -37,6 +40,24 @@ export const MedicationModal = ({ isOpen, onClose, onSuccess, medication, patien
     status: 'Active' as MedicationPrescribed['status'],
     isControlledSubstance: false
   });
+
+  useEffect(() => {
+    if (isOpen && !medication) {
+      loadQuickSelectMedications();
+    }
+  }, [isOpen, providerSpecialty, medication]);
+
+  const loadQuickSelectMedications = async () => {
+    setIsLoadingQuickSelect(true);
+    try {
+      const meds = await getQuickSelectMedicationsBySpecialty(providerSpecialty || null);
+      setQuickSelectMeds(meds);
+    } catch (error) {
+      console.error('Error loading quick select medications:', error);
+    } finally {
+      setIsLoadingQuickSelect(false);
+    }
+  };
 
   useEffect(() => {
     if (medication) {
@@ -186,6 +207,40 @@ export const MedicationModal = ({ isOpen, onClose, onSuccess, medication, patien
             </div>
           )}
 
+          {!medication && quickSelectMeds.length > 0 && !formData.medicationName && (
+            <div className="bg-gradient-to-r from-blue-50 to-cyan-50 rounded-xl p-4 border border-blue-200">
+              <div className="flex items-center gap-2 mb-3">
+                <Sparkles className="w-5 h-5 text-blue-600" />
+                <span className="text-sm font-semibold text-blue-900">
+                  Quick Select {providerSpecialty ? `for ${providerSpecialty}` : ''}
+                </span>
+              </div>
+              {isLoadingQuickSelect ? (
+                <div className="flex items-center justify-center py-4">
+                  <Loader2 className="w-5 h-5 animate-spin text-blue-500" />
+                  <span className="ml-2 text-sm text-blue-600">Loading recommendations...</span>
+                </div>
+              ) : (
+                <div className="flex flex-wrap gap-2">
+                  {quickSelectMeds.map((med) => (
+                    <button
+                      key={med.id}
+                      type="button"
+                      onClick={() => handleSelectFormularyMedication(med)}
+                      className="group flex items-center gap-2 px-3 py-2 bg-white border border-blue-200 rounded-lg hover:bg-blue-600 hover:text-white hover:border-blue-600 transition-all text-sm"
+                    >
+                      <Pill className="w-4 h-4 text-blue-500 group-hover:text-white" />
+                      <span className="font-medium text-gray-800 group-hover:text-white">{med.medication_name}</span>
+                      {med.is_controlled && (
+                        <Shield className="w-3 h-3 text-orange-500 group-hover:text-orange-200" />
+                      )}
+                    </button>
+                  ))}
+                </div>
+              )}
+            </div>
+          )}
+
           <div>
             <label className="block text-sm font-medium text-gray-700 mb-2">
               Medication Name *
@@ -209,10 +264,17 @@ export const MedicationModal = ({ isOpen, onClose, onSuccess, medication, patien
                   }
                 }}
                 onFocus={() => setShowMedicationSuggestions(true)}
-                placeholder="Search formulary (type at least 2 characters)"
+                placeholder="Type at least 2 characters to search formulary"
                 className="w-full pl-10 pr-4 py-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
                 required
               />
+              {showMedicationSuggestions && !formData.medicationName && medicationSearch.length < 2 && medicationSearch.length > 0 && (
+                <div className="absolute z-10 w-full mt-1 bg-white border border-gray-200 rounded-lg shadow-lg p-4">
+                  <p className="text-sm text-gray-500 text-center">
+                    Type at least 2 characters to search
+                  </p>
+                </div>
+              )}
               {showMedicationSuggestions && !formData.medicationName && medicationSearch.length >= 2 && (
                 <div className="absolute z-10 w-full mt-1 bg-white border border-gray-200 rounded-lg shadow-lg max-h-80 overflow-y-auto">
                   {isSearching ? (
@@ -265,7 +327,7 @@ export const MedicationModal = ({ isOpen, onClose, onSuccess, medication, patien
                                 </span>
                               )}
                               {med.is_combination && (
-                                <span className="px-2 py-0.5 bg-purple-100 text-purple-700 rounded text-xs">
+                                <span className="px-2 py-0.5 bg-cyan-100 text-cyan-700 rounded text-xs">
                                   Combination
                                 </span>
                               )}

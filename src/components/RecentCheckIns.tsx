@@ -1,5 +1,27 @@
+import { useState } from 'react';
 import { PatientVisit } from '../types';
-import { Clock, User, Activity, ArrowRight, CheckCircle2, Trash2, Edit2, Download } from 'lucide-react';
+import {
+  Clock,
+  User,
+  Activity,
+  ArrowRight,
+  CheckCircle2,
+  Trash2,
+  Edit2,
+  Download,
+  Heart,
+  Pill,
+  FlaskConical,
+  Stethoscope,
+  CalendarClock,
+  FileText,
+  ChevronDown,
+  ChevronUp,
+  Thermometer,
+  Wind,
+  Scale,
+  Ruler
+} from 'lucide-react';
 import { generateVisitReportPDF } from '../services/pdfService';
 
 interface RecentCheckInsProps {
@@ -9,7 +31,31 @@ interface RecentCheckInsProps {
   onEdit: (visit: PatientVisit) => void;
 }
 
+interface ExpandedSections {
+  [visitId: string]: {
+    vitals: boolean;
+    medicines: boolean;
+    tests: boolean;
+    notes: boolean;
+  };
+}
+
 export const RecentCheckIns = ({ visits, isLoading, onDelete, onEdit }: RecentCheckInsProps) => {
+  const [expandedSections, setExpandedSections] = useState<ExpandedSections>({});
+
+  const toggleSection = (visitId: string, section: 'vitals' | 'medicines' | 'tests' | 'notes') => {
+    setExpandedSections(prev => ({
+      ...prev,
+      [visitId]: {
+        ...prev[visitId],
+        [section]: !prev[visitId]?.[section]
+      }
+    }));
+  };
+
+  const isSectionExpanded = (visitId: string, section: 'vitals' | 'medicines' | 'tests' | 'notes') => {
+    return expandedSections[visitId]?.[section] ?? true;
+  };
 
   const formatDate = (dateString: string) => {
     const date = new Date(dateString);
@@ -18,6 +64,16 @@ export const RecentCheckIns = ({ visits, isLoading, onDelete, onEdit }: RecentCh
       day: 'numeric',
       hour: '2-digit',
       minute: '2-digit',
+    });
+  };
+
+  const formatFollowUpDate = (dateString: string) => {
+    const date = new Date(dateString);
+    return date.toLocaleDateString('en-US', {
+      weekday: 'long',
+      year: 'numeric',
+      month: 'long',
+      day: 'numeric',
     });
   };
 
@@ -55,6 +111,23 @@ export const RecentCheckIns = ({ visits, isLoading, onDelete, onEdit }: RecentCh
 
   const handleDownloadPDF = (visit: PatientVisit) => {
     generateVisitReportPDF(visit, null);
+  };
+
+  const hasVitalsData = (visit: PatientVisit) => {
+    return visit.vitals_data && Object.keys(visit.vitals_data).length > 0;
+  };
+
+  const hasMedicinesData = (visit: PatientVisit) => {
+    return visit.medicines_data && Array.isArray(visit.medicines_data) && visit.medicines_data.length > 0;
+  };
+
+  const hasTestsData = (visit: PatientVisit) => {
+    return visit.tests_data && Array.isArray(visit.tests_data) && visit.tests_data.length > 0;
+  };
+
+  const hasAdditionalData = (visit: PatientVisit) => {
+    return hasVitalsData(visit) || hasMedicinesData(visit) || hasTestsData(visit) ||
+           visit.diagnosis_summary || visit.next_visit || visit.follow_up_date || visit.visit_notes;
   };
 
   if (isLoading) {
@@ -234,6 +307,246 @@ export const RecentCheckIns = ({ visits, isLoading, onDelete, onEdit }: RecentCh
                 </div>
               </div>
             </div>
+
+            {hasAdditionalData(visit) && (
+              <div className="border-t border-slate-200 bg-slate-50/50">
+                {visit.diagnosis_summary && (
+                  <div className="px-6 py-4 border-b border-slate-200">
+                    <div className="flex items-center gap-2 mb-2">
+                      <Stethoscope className="w-5 h-5 text-blue-600" />
+                      <span className="text-sm font-semibold text-slate-900">Diagnosis Summary</span>
+                    </div>
+                    <p className="text-sm text-slate-700 bg-blue-50 rounded-lg p-3 border border-blue-200">
+                      {visit.diagnosis_summary}
+                    </p>
+                  </div>
+                )}
+
+                {(visit.next_visit || visit.follow_up_date) && (
+                  <div className="px-6 py-4 border-b border-slate-200">
+                    <div className="flex items-center gap-3">
+                      <div className="w-10 h-10 bg-amber-100 rounded-full flex items-center justify-center">
+                        <CalendarClock className="w-5 h-5 text-amber-600" />
+                      </div>
+                      <div>
+                        <span className="text-xs font-semibold text-slate-500 uppercase tracking-wide">Next Visit</span>
+                        <p className="text-base font-medium text-slate-900">
+                          {formatFollowUpDate(visit.next_visit || visit.follow_up_date || '')}
+                        </p>
+                      </div>
+                    </div>
+                  </div>
+                )}
+
+                {hasVitalsData(visit) && (
+                  <div className="border-b border-slate-200">
+                    <button
+                      onClick={() => toggleSection(visit.id, 'vitals')}
+                      className="w-full px-6 py-3 flex items-center justify-between hover:bg-slate-100 transition-colors"
+                    >
+                      <div className="flex items-center gap-2">
+                        <Heart className="w-5 h-5 text-red-500" />
+                        <span className="text-sm font-semibold text-slate-900">Vital Signs</span>
+                      </div>
+                      {isSectionExpanded(visit.id, 'vitals') ? (
+                        <ChevronUp className="w-5 h-5 text-slate-400" />
+                      ) : (
+                        <ChevronDown className="w-5 h-5 text-slate-400" />
+                      )}
+                    </button>
+                    {isSectionExpanded(visit.id, 'vitals') && (
+                      <div className="px-6 pb-4">
+                        <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-3">
+                          {visit.vitals_data.blood_pressure && (
+                            <div className="bg-white rounded-lg p-3 border border-slate-200">
+                              <div className="flex items-center gap-2 mb-1">
+                                <Heart className="w-4 h-4 text-red-500" />
+                                <span className="text-xs text-slate-500">Blood Pressure</span>
+                              </div>
+                              <span className="text-lg font-bold text-slate-900">{visit.vitals_data.blood_pressure}</span>
+                              <span className="text-xs text-slate-500 ml-1">mmHg</span>
+                            </div>
+                          )}
+                          {visit.vitals_data.temperature && (
+                            <div className="bg-white rounded-lg p-3 border border-slate-200">
+                              <div className="flex items-center gap-2 mb-1">
+                                <Thermometer className="w-4 h-4 text-orange-500" />
+                                <span className="text-xs text-slate-500">Temperature</span>
+                              </div>
+                              <span className="text-lg font-bold text-slate-900">{visit.vitals_data.temperature}</span>
+                              <span className="text-xs text-slate-500 ml-1">{visit.vitals_data.temperature_unit || 'F'}</span>
+                            </div>
+                          )}
+                          {visit.vitals_data.pulse_rate && (
+                            <div className="bg-white rounded-lg p-3 border border-slate-200">
+                              <div className="flex items-center gap-2 mb-1">
+                                <Activity className="w-4 h-4 text-pink-500" />
+                                <span className="text-xs text-slate-500">Pulse Rate</span>
+                              </div>
+                              <span className="text-lg font-bold text-slate-900">{visit.vitals_data.pulse_rate}</span>
+                              <span className="text-xs text-slate-500 ml-1">bpm</span>
+                            </div>
+                          )}
+                          {visit.vitals_data.respiratory_rate && (
+                            <div className="bg-white rounded-lg p-3 border border-slate-200">
+                              <div className="flex items-center gap-2 mb-1">
+                                <Wind className="w-4 h-4 text-cyan-500" />
+                                <span className="text-xs text-slate-500">Respiratory Rate</span>
+                              </div>
+                              <span className="text-lg font-bold text-slate-900">{visit.vitals_data.respiratory_rate}</span>
+                              <span className="text-xs text-slate-500 ml-1">/min</span>
+                            </div>
+                          )}
+                          {visit.vitals_data.oxygen_saturation && (
+                            <div className="bg-white rounded-lg p-3 border border-slate-200">
+                              <div className="flex items-center gap-2 mb-1">
+                                <Activity className="w-4 h-4 text-blue-500" />
+                                <span className="text-xs text-slate-500">SpO2</span>
+                              </div>
+                              <span className="text-lg font-bold text-slate-900">{visit.vitals_data.oxygen_saturation}</span>
+                              <span className="text-xs text-slate-500 ml-1">%</span>
+                            </div>
+                          )}
+                          {visit.vitals_data.weight && (
+                            <div className="bg-white rounded-lg p-3 border border-slate-200">
+                              <div className="flex items-center gap-2 mb-1">
+                                <Scale className="w-4 h-4 text-green-500" />
+                                <span className="text-xs text-slate-500">Weight</span>
+                              </div>
+                              <span className="text-lg font-bold text-slate-900">{visit.vitals_data.weight}</span>
+                              <span className="text-xs text-slate-500 ml-1">kg</span>
+                            </div>
+                          )}
+                          {visit.vitals_data.height && (
+                            <div className="bg-white rounded-lg p-3 border border-slate-200">
+                              <div className="flex items-center gap-2 mb-1">
+                                <Ruler className="w-4 h-4 text-teal-500" />
+                                <span className="text-xs text-slate-500">Height</span>
+                              </div>
+                              <span className="text-lg font-bold text-slate-900">{visit.vitals_data.height}</span>
+                              <span className="text-xs text-slate-500 ml-1">cm</span>
+                            </div>
+                          )}
+                        </div>
+                      </div>
+                    )}
+                  </div>
+                )}
+
+                {hasMedicinesData(visit) && (
+                  <div className="border-b border-slate-200">
+                    <button
+                      onClick={() => toggleSection(visit.id, 'medicines')}
+                      className="w-full px-6 py-3 flex items-center justify-between hover:bg-slate-100 transition-colors"
+                    >
+                      <div className="flex items-center gap-2">
+                        <Pill className="w-5 h-5 text-emerald-500" />
+                        <span className="text-sm font-semibold text-slate-900">
+                          Prescribed Medicines ({visit.medicines_data?.length})
+                        </span>
+                      </div>
+                      {isSectionExpanded(visit.id, 'medicines') ? (
+                        <ChevronUp className="w-5 h-5 text-slate-400" />
+                      ) : (
+                        <ChevronDown className="w-5 h-5 text-slate-400" />
+                      )}
+                    </button>
+                    {isSectionExpanded(visit.id, 'medicines') && (
+                      <div className="px-6 pb-4">
+                        <div className="space-y-2">
+                          {visit.medicines_data?.map((med: any, index: number) => (
+                            <div key={index} className="bg-white rounded-lg p-3 border border-slate-200 flex items-center justify-between">
+                              <div className="flex items-center gap-3">
+                                <div className="w-8 h-8 bg-emerald-100 rounded-full flex items-center justify-center">
+                                  <Pill className="w-4 h-4 text-emerald-600" />
+                                </div>
+                                <div>
+                                  <p className="font-medium text-slate-900">{med.name || med.medication_name}</p>
+                                  <p className="text-xs text-slate-500">
+                                    {med.dosage || med.strength} - {med.frequency}
+                                  </p>
+                                </div>
+                              </div>
+                              {med.duration && (
+                                <span className="text-xs bg-slate-100 px-2 py-1 rounded text-slate-600">
+                                  {med.duration}
+                                </span>
+                              )}
+                            </div>
+                          ))}
+                        </div>
+                      </div>
+                    )}
+                  </div>
+                )}
+
+                {hasTestsData(visit) && (
+                  <div className="border-b border-slate-200">
+                    <button
+                      onClick={() => toggleSection(visit.id, 'tests')}
+                      className="w-full px-6 py-3 flex items-center justify-between hover:bg-slate-100 transition-colors"
+                    >
+                      <div className="flex items-center gap-2">
+                        <FlaskConical className="w-5 h-5 text-violet-500" />
+                        <span className="text-sm font-semibold text-slate-900">
+                          Ordered Tests ({visit.tests_data?.length})
+                        </span>
+                      </div>
+                      {isSectionExpanded(visit.id, 'tests') ? (
+                        <ChevronUp className="w-5 h-5 text-slate-400" />
+                      ) : (
+                        <ChevronDown className="w-5 h-5 text-slate-400" />
+                      )}
+                    </button>
+                    {isSectionExpanded(visit.id, 'tests') && (
+                      <div className="px-6 pb-4">
+                        <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
+                          {visit.tests_data?.map((test: any, index: number) => (
+                            <div key={index} className="bg-white rounded-lg p-3 border border-slate-200 flex items-center gap-3">
+                              <div className="w-8 h-8 bg-violet-100 rounded-full flex items-center justify-center">
+                                <FlaskConical className="w-4 h-4 text-violet-600" />
+                              </div>
+                              <div>
+                                <p className="font-medium text-slate-900">{test.name || test.test_name}</p>
+                                {test.notes && (
+                                  <p className="text-xs text-slate-500">{test.notes}</p>
+                                )}
+                              </div>
+                            </div>
+                          ))}
+                        </div>
+                      </div>
+                    )}
+                  </div>
+                )}
+
+                {visit.visit_notes && (
+                  <div>
+                    <button
+                      onClick={() => toggleSection(visit.id, 'notes')}
+                      className="w-full px-6 py-3 flex items-center justify-between hover:bg-slate-100 transition-colors"
+                    >
+                      <div className="flex items-center gap-2">
+                        <FileText className="w-5 h-5 text-slate-500" />
+                        <span className="text-sm font-semibold text-slate-900">Doctor Notes</span>
+                      </div>
+                      {isSectionExpanded(visit.id, 'notes') ? (
+                        <ChevronUp className="w-5 h-5 text-slate-400" />
+                      ) : (
+                        <ChevronDown className="w-5 h-5 text-slate-400" />
+                      )}
+                    </button>
+                    {isSectionExpanded(visit.id, 'notes') && (
+                      <div className="px-6 pb-4">
+                        <p className="text-sm text-slate-700 bg-white rounded-lg p-3 border border-slate-200">
+                          {visit.visit_notes}
+                        </p>
+                      </div>
+                    )}
+                  </div>
+                )}
+              </div>
+            )}
           </div>
         ))}
       </div>

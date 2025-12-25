@@ -13,9 +13,9 @@ import {
 } from 'lucide-react';
 import { DashboardHeader } from '../components/DashboardHeader';
 import { MedicationModal } from '../components/MedicationModal';
-import { getPatientMedications, getHealthcareProvider } from '../services/ehrService';
+import { getPatientMedications, ensureHealthcareProvider } from '../services/ehrService';
 import { searchPatients } from '../services/databaseService';
-import { MedicationPrescribed, Patient } from '../types';
+import { MedicationPrescribed, Patient, HealthcareProvider } from '../types';
 import { supabase } from '../lib/supabase';
 import type { User } from '@supabase/supabase-js';
 
@@ -35,7 +35,7 @@ export const Medications = () => {
   const [showPatientSearch, setShowPatientSearch] = useState(false);
   const [patientSearchTerm, setPatientSearchTerm] = useState('');
   const [patientSearchResults, setPatientSearchResults] = useState<Patient[]>([]);
-  const [providerId, setProviderId] = useState<string | null>(null);
+  const [provider, setProvider] = useState<HealthcareProvider | null>(null);
   const [successMessage, setSuccessMessage] = useState<string | null>(null);
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
 
@@ -84,9 +84,9 @@ export const Medications = () => {
   const loadProviderInfo = async () => {
     if (!user) return;
     try {
-      const provider = await getHealthcareProvider(user.id);
-      if (provider) {
-        setProviderId(provider.id);
+      const providerData = await ensureHealthcareProvider(user.id);
+      if (providerData) {
+        setProvider(providerData);
       }
     } catch (error) {
       console.error('Error loading provider info:', error);
@@ -389,7 +389,7 @@ export const Medications = () => {
         </div>
       </main>
 
-      {showMedicationModal && selectedPatient && providerId && (
+      {showMedicationModal && selectedPatient && provider && (
         <MedicationModal
           isOpen={showMedicationModal}
           onClose={() => {
@@ -399,7 +399,8 @@ export const Medications = () => {
           onSuccess={handleMedicationSaved}
           medication={selectedMedication}
           patientId={selectedPatient.id}
-          providerId={providerId}
+          providerId={provider.id}
+          providerSpecialty={provider.specialty}
         />
       )}
     </div>
