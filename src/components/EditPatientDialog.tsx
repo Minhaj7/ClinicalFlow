@@ -44,7 +44,7 @@ export const EditPatientDialog = ({ visit, isOpen, onClose, onSave, onRefresh }:
   };
 
   const handleSave = async () => {
-    console.log("Vector Protocol: Initiating Save...");
+    console.log("Vector Protocol: Attempting RPC Update...");
 
     const formData = {
       raw_transcript: rawTranscript,
@@ -59,58 +59,33 @@ export const EditPatientDialog = ({ visit, isOpen, onClose, onSave, onRefresh }:
     setIsSaving(true);
 
     try {
-      // STEP 1: EXISTENCE CHECK
-      // We ask the database: "Do you have this ID?"
-      const { data: checkData, error: checkError } = await supabase
-        .from('patient_visits')
-        .select('id')
-        .eq('id', visit.id)
-        .maybeSingle();
-
-      if (checkError) {
-        alert(`DIAGNOSTIC FAIL: Database Connection Error during check.\n${checkError.message}`);
-        setIsSaving(false);
-        return;
-      }
-
-      if (!checkData) {
-        // THIS IS THE SMOKING GUN
-        alert(`CRITICAL ERROR: The Database says Patient ID ${visit.id} DOES NOT EXIST.\n\nYour list is showing 'Ghost Data'. Please refresh the page completely.`);
-        setIsSaving(false);
-        return;
-      }
-
-      // STEP 2: IF EXISTS, EXECUTE UPDATE
-      alert(`CONFIRMED: Row exists. Attempting Update on ID: ${visit.id}...`);
-
-      const { data, error } = await supabase
-        .from('patient_visits')
-        .update({
-          raw_transcript: formData.raw_transcript,
-          patient_data: formData.patient_data,
-          symptoms_data: formData.symptoms_data
-        })
-        .eq('id', visit.id)
-        .select();
+      // Call the "God Mode" Function
+      const { error } = await supabase.rpc('update_patient_visit', {
+        row_id: visit.id,
+        new_transcript: formData.raw_transcript,
+        new_patient_data: formData.patient_data,
+        new_symptoms_data: formData.symptoms_data
+      });
 
       if (error) {
-        alert(`UPDATE ERROR: ${error.message}`);
+        console.error("RPC Failed:", error);
+        alert(`RPC Error: ${error.message}`);
         setIsSaving(false);
-      } else if (!data || data.length === 0) {
-        alert("UPDATE STALLED: Row exists, but Update returned 0 rows. This is 100% a Policy (RLS) block.");
-        setIsSaving(false);
-      } else {
-        alert("SUCCESS: Data Securely Updated.");
-        console.log("Update Success:", data[0]);
-
-        await onSave(formData);
-
-        if (onRefresh) {
-          onRefresh();
-        }
-
-        onClose();
+        return;
       }
+
+      // Success Logic
+      // Since RPC returns void, if there's no error, it worked.
+      console.log("RPC Update Successful.");
+      alert("SUCCESS: Patient Data Updated via Secure Channel.");
+
+      await onSave(formData);
+
+      if (onRefresh) {
+        onRefresh();
+      }
+
+      onClose();
     } catch (error) {
       console.error('Error saving patient data:', error);
       alert('Failed to save changes. Please try again.');
