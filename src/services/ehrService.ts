@@ -689,6 +689,21 @@ export const ensureHealthcareProvider = async (userId: string): Promise<Healthca
     return existingProvider;
   }
 
+  const { data: profile } = await supabase
+    .from('profiles')
+    .select('*')
+    .eq('id', userId)
+    .maybeSingle();
+
+  if (!profile) return null;
+
+  const facilityType = profile.facility_type?.toLowerCase() || '';
+  const isPrescriber = ['doctor', 'clinic', 'hospital', 'physician', 'medical'].some(
+    t => facilityType.includes(t)
+  ) || facilityType === '';
+
+  if (!isPrescriber) return null;
+
   const { data: userRole } = await supabase
     .from('user_roles')
     .select(`
@@ -699,31 +714,49 @@ export const ensureHealthcareProvider = async (userId: string): Promise<Healthca
     .eq('is_active', true)
     .maybeSingle();
 
-  if (!userRole) return null;
+  let organizationId = userRole?.organization_id;
+  let providerType = userRole?.role?.name || 'Doctor';
 
-  const roleName = userRole.role?.name;
-  const canPrescribe = ['Doctor', 'Physician', 'Nurse Practitioner', 'Pharmacist'].some(
-    r => roleName?.toLowerCase().includes(r.toLowerCase())
-  );
-
-  if (!canPrescribe) return null;
-
-  const { data: profile } = await supabase
-    .from('profiles')
-    .select('*')
-    .eq('id', userId)
-    .maybeSingle();
-
-  let organizationId = userRole.organization_id;
-
-  if (!organizationId && profile) {
-    const { data: org } = await supabase
+  if (!organizationId && profile.clinic_name) {
+    const { data: existingOrg } = await supabase
       .from('organizations')
       .select('id')
       .eq('name', profile.clinic_name)
       .maybeSingle();
 
-    organizationId = org?.id;
+    if (existingOrg) {
+      organizationId = existingOrg.id;
+    } else {
+      const { data: newOrg } = await supabase
+        .from('organizations')
+        .insert({
+          name: profile.clinic_name,
+          organization_type: profile.facility_type || 'Clinic',
+          is_active: true,
+        })
+        .select()
+        .single();
+
+      if (newOrg) {
+        organizationId = newOrg.id;
+      }
+    }
+  }
+
+  if (!organizationId) {
+    const { data: defaultOrg } = await supabase
+      .from('organizations')
+      .insert({
+        name: `${profile.full_name}'s Practice`,
+        organization_type: 'Clinic',
+        is_active: true,
+      })
+      .select()
+      .single();
+
+    if (defaultOrg) {
+      organizationId = defaultOrg.id;
+    }
   }
 
   if (!organizationId) return null;
@@ -733,7 +766,7 @@ export const ensureHealthcareProvider = async (userId: string): Promise<Healthca
     .insert({
       user_id: userId,
       organization_id: organizationId,
-      provider_type: roleName || 'Doctor',
+      provider_type: providerType,
       specialty: null,
       accepting_new_patients: true,
       is_active: true,

@@ -36,6 +36,7 @@ export const Medications = () => {
   const [patientSearchTerm, setPatientSearchTerm] = useState('');
   const [patientSearchResults, setPatientSearchResults] = useState<Patient[]>([]);
   const [provider, setProvider] = useState<HealthcareProvider | null>(null);
+  const [isLoadingProvider, setIsLoadingProvider] = useState(true);
   const [successMessage, setSuccessMessage] = useState<string | null>(null);
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
 
@@ -83,13 +84,15 @@ export const Medications = () => {
 
   const loadProviderInfo = async () => {
     if (!user) return;
+    setIsLoadingProvider(true);
     try {
       const providerData = await ensureHealthcareProvider(user.id);
-      if (providerData) {
-        setProvider(providerData);
-      }
+      setProvider(providerData);
     } catch (error) {
       console.error('Error loading provider info:', error);
+      setProvider(null);
+    } finally {
+      setIsLoadingProvider(false);
     }
   };
 
@@ -146,11 +149,24 @@ export const Medications = () => {
       setErrorMessage('Please select a patient first');
       return;
     }
+    if (isLoadingProvider) {
+      setErrorMessage('Loading provider information, please wait...');
+      return;
+    }
+    if (!provider) {
+      setErrorMessage('You need to be registered as a healthcare provider to prescribe medications. Please complete your profile setup or contact your administrator.');
+      return;
+    }
+    setErrorMessage(null);
     setSelectedMedication(null);
     setShowMedicationModal(true);
   };
 
   const handleEditMedication = (medication: MedicationPrescribed) => {
+    if (!provider) {
+      setErrorMessage('You need to be registered as a healthcare provider to edit medications.');
+      return;
+    }
     setSelectedMedication(medication);
     setShowMedicationModal(true);
   };
@@ -215,6 +231,22 @@ export const Medications = () => {
             <div className="mb-6 bg-red-50 border border-red-200 rounded-lg p-4 flex items-center gap-3">
               <AlertCircle className="w-5 h-5 text-red-600" />
               <p className="text-sm font-medium text-red-800">{errorMessage}</p>
+            </div>
+          )}
+
+          {isLoadingProvider && (
+            <div className="mb-6 bg-blue-50 border border-blue-200 rounded-lg p-4 flex items-center gap-3">
+              <div className="h-5 w-5 animate-spin rounded-full border-2 border-blue-600 border-r-transparent" />
+              <p className="text-sm font-medium text-blue-800">Setting up prescriber access...</p>
+            </div>
+          )}
+
+          {!isLoadingProvider && !provider && (
+            <div className="mb-6 bg-amber-50 border border-amber-200 rounded-lg p-4 flex items-center gap-3">
+              <AlertCircle className="w-5 h-5 text-amber-600" />
+              <p className="text-sm font-medium text-amber-800">
+                Prescriber access not available. Please ensure your profile is complete with a valid clinic name.
+              </p>
             </div>
           )}
 
