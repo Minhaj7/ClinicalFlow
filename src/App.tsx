@@ -1,13 +1,17 @@
 import { useState, useEffect } from 'react';
-import { Stethoscope, CheckCircle, AlertTriangle } from 'lucide-react';
+import { Stethoscope, CheckCircle, AlertTriangle, LogOut, User as UserIcon } from 'lucide-react';
 import { RecordingInterface } from './components/RecordingInterface';
 import { RecentCheckIns } from './components/RecentCheckIns';
+import { Auth } from './components/Auth';
 import { extractPatientData } from './services/geminiService';
-import { savePatientVisit, getRecentVisits } from './services/databaseService';
+import { savePatientVisit, getRecentVisits, deletePatientVisit } from './services/databaseService';
 import { PatientVisit } from './types';
 import { supabase } from './lib/supabase';
+import type { User } from '@supabase/supabase-js';
 
 function App() {
+  const [user, setUser] = useState<User | null>(null);
+  const [authLoading, setAuthLoading] = useState(true);
   const [visits, setVisits] = useState<PatientVisit[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [isProcessing, setIsProcessing] = useState(false);
@@ -24,6 +28,21 @@ function App() {
   console.log("Supabase Key present:", !!supabaseKey);
   console.log("Gemini Key present:", !!geminiKey);
 
+  useEffect(() => {
+    supabase.auth.getSession().then(({ data: { session } }) => {
+      setUser(session?.user ?? null);
+      setAuthLoading(false);
+    });
+
+    const {
+      data: { subscription },
+    } = supabase.auth.onAuthStateChange((_event, session) => {
+      setUser(session?.user ?? null);
+    });
+
+    return () => subscription.unsubscribe();
+  }, []);
+
   const loadRecentVisits = async () => {
     try {
       setIsLoading(true);
@@ -38,8 +57,27 @@ function App() {
   };
 
   useEffect(() => {
-    loadRecentVisits();
-  }, []);
+    if (user) {
+      loadRecentVisits();
+    }
+  }, [user]);
+
+  const handleLogout = async () => {
+    await supabase.auth.signOut();
+    setVisits([]);
+  };
+
+  const handleDeleteVisit = async (visitId: string) => {
+    setVisits((prev) => prev.filter((v) => v.id !== visitId));
+
+    try {
+      await deletePatientVisit(visitId);
+    } catch (error) {
+      console.error('Error deleting visit:', error);
+      setErrorMessage(error instanceof Error ? error.message : 'Failed to delete visit');
+      await loadRecentVisits();
+    }
+  };
 
   const testConnection = async () => {
     console.log("=== TESTING SUPABASE CONNECTION ===");
@@ -84,6 +122,11 @@ function App() {
   };
 
   const handleTranscriptComplete = async (transcript: string) => {
+    if (!user) {
+      setErrorMessage('You must be logged in to save patient check-ins');
+      return;
+    }
+
     setIsProcessing(true);
     setSuccessMessage(null);
     setErrorMessage(null);
@@ -95,7 +138,7 @@ function App() {
       const aiJson = await extractPatientData(transcript);
       console.log("AI Extracted Data:", aiJson);
 
-      await savePatientVisit(transcript, aiJson);
+      await savePatientVisit(transcript, aiJson, user.id);
       console.log("Saved to database successfully");
 
       setSuccessMessage('Patient check-in saved successfully!');
@@ -113,15 +156,47 @@ function App() {
     }
   };
 
+  if (authLoading) {
+    return (
+      <div className="min-h-screen bg-gradient-to-br from-slate-50 to-slate-100 flex items-center justify-center">
+        <div className="text-center">
+          <div className="w-12 h-12 border-4 border-blue-600 border-t-transparent rounded-full animate-spin mx-auto mb-4"></div>
+          <p className="text-slate-600">Loading...</p>
+        </div>
+      </div>
+    );
+  }
+
+  if (!user) {
+    return <Auth />;
+  }
+
   return (
     <div className="min-h-screen bg-white">
       <header className="bg-black text-white py-8 border-b-4 border-black">
         <div className="max-w-4xl mx-auto px-8">
-          <div className="flex items-center gap-4">
-            <Stethoscope className="w-12 h-12" />
-            <h1 className="text-4xl font-bold">Voice Check-in System</h1>
+          <div className="flex items-center justify-between">
+            <div>
+              <div className="flex items-center gap-4">
+                <Stethoscope className="w-12 h-12" />
+                <h1 className="text-4xl font-bold">Voice Check-in System</h1>
+              </div>
+              <p className="text-xl mt-2">Medical Clinic Patient Registration</p>
+            </div>
+            <div className="flex items-center gap-3">
+              <div className="flex items-center gap-2 px-3 py-2 bg-white/10 rounded-lg">
+                <UserIcon className="w-4 h-4" />
+                <span className="text-sm">{user.email}</span>
+              </div>
+              <button
+                onClick={handleLogout}
+                className="bg-white text-black px-4 py-2 border-2 border-white font-bold hover:bg-gray-100 flex items-center gap-2"
+              >
+                <LogOut className="w-4 h-4" />
+                Logout
+              </button>
+            </div>
           </div>
-          <p className="text-xl mt-2">Medical Clinic Patient Registration</p>
         </div>
       </header>
 
@@ -204,7 +279,7 @@ function App() {
           <div className="border-t-4 border-black"></div>
         </div>
 
-        <RecentCheckIns visits={visits} isLoading={isLoading} />
+        <RecentCheckIns visits={visits} isLoading={isLoading} onDelete={handleDeleteVisit} />
       </main>
 
       <footer className="bg-black text-white py-6 mt-12 border-t-4 border-black">

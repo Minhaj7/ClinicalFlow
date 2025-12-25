@@ -1,12 +1,13 @@
 import { PatientVisit } from '../types';
-import { Clock, User, Activity, ArrowRight, CheckCircle2 } from 'lucide-react';
+import { Clock, User, Activity, ArrowRight, CheckCircle2, Trash2 } from 'lucide-react';
 
 interface RecentCheckInsProps {
   visits: PatientVisit[];
   isLoading: boolean;
+  onDelete: (visitId: string) => void;
 }
 
-export const RecentCheckIns = ({ visits, isLoading }: RecentCheckInsProps) => {
+export const RecentCheckIns = ({ visits, isLoading, onDelete }: RecentCheckInsProps) => {
   const formatDate = (dateString: string) => {
     const date = new Date(dateString);
     return date.toLocaleString('en-US', {
@@ -36,6 +37,17 @@ export const RecentCheckIns = ({ visits, isLoading }: RecentCheckInsProps) => {
     const urduPatterns = /[\u0600-\u06FF]/;
     const romanUrduKeywords = /\b(bhai|mein|hai|hoon|thik|nahi|kya|acha|bahar)\b/i;
     return urduPatterns.test(transcript) || romanUrduKeywords.test(transcript);
+  };
+
+  const handleDelete = (visit: PatientVisit) => {
+    const patientName = visit.patient_data?.name || 'this patient';
+    const confirmed = window.confirm(
+      `Are you sure you want to delete the check-in for ${patientName}? This action cannot be undone.`
+    );
+
+    if (confirmed) {
+      onDelete(visit.id);
+    }
   };
 
   if (isLoading) {
@@ -86,8 +98,16 @@ export const RecentCheckIns = ({ visits, isLoading }: RecentCheckInsProps) => {
         {visits.map((visit) => (
           <div
             key={visit.id}
-            className="bg-white rounded-xl border border-slate-200 overflow-hidden hover:shadow-lg transition-shadow duration-200"
+            className="bg-white rounded-xl border border-slate-200 overflow-hidden hover:shadow-lg transition-shadow duration-200 relative"
           >
+            <button
+              onClick={() => handleDelete(visit)}
+              className="absolute top-3 right-3 z-10 p-2 bg-white hover:bg-red-50 border border-slate-200 hover:border-red-300 rounded-lg transition-all group"
+              title="Delete this check-in"
+            >
+              <Trash2 className="w-4 h-4 text-slate-400 group-hover:text-red-600" />
+            </button>
+
             <div className="grid lg:grid-cols-[1fr_auto_1fr] gap-0">
               <div className="bg-slate-50 p-6 border-b lg:border-b-0 lg:border-r border-slate-200">
                 <div className="mb-3">

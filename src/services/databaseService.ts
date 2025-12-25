@@ -3,12 +3,14 @@ import { ExtractedPatientData, PatientVisit } from '../types';
 
 export const savePatientVisit = async (
   transcript: string,
-  aiJson: any
+  aiJson: any,
+  receptionistId: string
 ): Promise<PatientVisit> => {
   console.log("Vector Protocol: Attempting to save to Supabase...", {
     raw_transcript: transcript,
     patient_data: aiJson.patient_data,
-    symptoms_data: aiJson.symptoms_data
+    symptoms_data: aiJson.symptoms_data,
+    receptionist_id: receptionistId
   });
 
   const { data, error } = await supabase
@@ -18,6 +20,7 @@ export const savePatientVisit = async (
         raw_transcript: transcript,
         patient_data: aiJson.patient_data,
         symptoms_data: aiJson.symptoms_data,
+        receptionist_id: receptionistId,
       }
     ])
     .select();
@@ -48,4 +51,15 @@ export const getRecentVisits = async (limit: number = 10): Promise<PatientVisit[
   }
 
   return (data as PatientVisit[]) || [];
+};
+
+export const deletePatientVisit = async (visitId: string): Promise<void> => {
+  const { error } = await supabase
+    .from('patient_visits')
+    .delete()
+    .eq('id', visitId);
+
+  if (error) {
+    throw new Error(`Failed to delete visit: ${error.message}`);
+  }
 };
