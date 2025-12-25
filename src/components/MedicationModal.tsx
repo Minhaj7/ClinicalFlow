@@ -1,7 +1,7 @@
-import { useState, useEffect } from 'react';
-import { X, Search, Calendar, AlertTriangle } from 'lucide-react';
-import { createMedication, updateMedication } from '../services/ehrService';
-import { MedicationPrescribed } from '../types';
+import { useState, useEffect, useCallback, useRef } from 'react';
+import { X, Search, Calendar, AlertTriangle, Shield, Loader2 } from 'lucide-react';
+import { createMedication, updateMedication, searchFormularyMedications } from '../services/ehrService';
+import { MedicationPrescribed, DrugFormulary } from '../types';
 
 interface MedicationModalProps {
   isOpen: boolean;
@@ -12,27 +12,18 @@ interface MedicationModalProps {
   providerId: string;
 }
 
-const commonMedications = [
-  { name: 'Metformin', strength: '500mg', form: 'Tablet' },
-  { name: 'Lisinopril', strength: '10mg', form: 'Tablet' },
-  { name: 'Atorvastatin', strength: '20mg', form: 'Tablet' },
-  { name: 'Amlodipine', strength: '5mg', form: 'Tablet' },
-  { name: 'Levothyroxine', strength: '50mcg', form: 'Tablet' },
-  { name: 'Omeprazole', strength: '20mg', form: 'Capsule' },
-  { name: 'Metoprolol', strength: '50mg', form: 'Tablet' },
-  { name: 'Losartan', strength: '50mg', form: 'Tablet' },
-  { name: 'Albuterol', strength: '90mcg', form: 'Inhaler' },
-  { name: 'Gabapentin', strength: '300mg', form: 'Capsule' }
-];
-
-const dosageForms = ['Tablet', 'Capsule', 'Syrup', 'Injection', 'Cream', 'Ointment', 'Drops', 'Inhaler', 'Patch'];
-const frequencies = ['Once daily', 'Twice daily', 'Three times daily', 'Four times daily', 'Every 12 hours', 'Every 8 hours', 'As needed', 'Before meals', 'After meals', 'At bedtime'];
+const dosageForms = ['Tablet', 'Capsule', 'Syrup', 'Injection', 'Cream', 'Ointment', 'Drops', 'Inhaler', 'Patch', 'Solution', 'Suspension', 'Powder', 'Gel', 'Spray', 'Suppository'];
+const frequencies = ['Once daily', 'Twice daily', 'Three times daily', 'Four times daily', 'Every 12 hours', 'Every 8 hours', 'Every 6 hours', 'Every 4 hours', 'As needed', 'Before meals', 'After meals', 'At bedtime', 'Weekly', 'Every other day'];
 
 export const MedicationModal = ({ isOpen, onClose, onSuccess, medication, patientId, providerId }: MedicationModalProps) => {
   const [isLoading, setIsLoading] = useState(false);
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
   const [medicationSearch, setMedicationSearch] = useState('');
   const [showMedicationSuggestions, setShowMedicationSuggestions] = useState(false);
+  const [formularyResults, setFormularyResults] = useState<DrugFormulary[]>([]);
+  const [isSearching, setIsSearching] = useState(false);
+  const [selectedFormularyMed, setSelectedFormularyMed] = useState<DrugFormulary | null>(null);
+  const searchTimeoutRef = useRef<NodeJS.Timeout | null>(null);
 
   const [formData, setFormData] = useState({
     medicationName: '',
@@ -69,16 +60,64 @@ export const MedicationModal = ({ isOpen, onClose, onSuccess, medication, patien
     }
   }, [medication]);
 
-  const filteredMedications = medicationSearch
-    ? commonMedications.filter((med) =>
-        med.name.toLowerCase().includes(medicationSearch.toLowerCase())
-      )
-    : commonMedications;
+  const searchMedications = useCallback(async (term: string) => {
+    if (term.length < 2) {
+      setFormularyResults([]);
+      return;
+    }
 
-  const handleSelectMedication = (name: string, strength: string, form: string) => {
-    setFormData({ ...formData, medicationName: name, strength, dosageForm: form });
+    setIsSearching(true);
+    try {
+      const results = await searchFormularyMedications(term, 15);
+      setFormularyResults(results);
+    } catch (error) {
+      console.error('Error searching formulary:', error);
+    } finally {
+      setIsSearching(false);
+    }
+  }, []);
+
+  useEffect(() => {
+    if (searchTimeoutRef.current) {
+      clearTimeout(searchTimeoutRef.current);
+    }
+
+    if (medicationSearch.length >= 2) {
+      searchTimeoutRef.current = setTimeout(() => {
+        searchMedications(medicationSearch);
+      }, 300);
+    } else {
+      setFormularyResults([]);
+    }
+
+    return () => {
+      if (searchTimeoutRef.current) {
+        clearTimeout(searchTimeoutRef.current);
+      }
+    };
+  }, [medicationSearch, searchMedications]);
+
+  const handleSelectFormularyMedication = (med: DrugFormulary) => {
+    setSelectedFormularyMed(med);
+    const defaultStrength = med.default_strengths?.[0] || '';
+    const defaultForm = med.default_dosage_forms?.[0] || 'Tablet';
+
+    setFormData({
+      ...formData,
+      medicationName: med.medication_name,
+      strength: defaultStrength,
+      dosageForm: defaultForm,
+      isControlledSubstance: med.is_controlled
+    });
     setShowMedicationSuggestions(false);
     setMedicationSearch('');
+    setFormularyResults([]);
+  };
+
+  const handleManualMedicationEntry = () => {
+    setFormData({ ...formData, medicationName: medicationSearch });
+    setShowMedicationSuggestions(false);
+    setFormularyResults([]);
   };
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -152,7 +191,11 @@ export const MedicationModal = ({ isOpen, onClose, onSuccess, medication, patien
               Medication Name *
             </label>
             <div className="relative">
-              <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 w-5 h-5 text-gray-400" />
+              {isSearching ? (
+                <Loader2 className="absolute left-3 top-1/2 transform -translate-y-1/2 w-5 h-5 text-blue-500 animate-spin" />
+              ) : (
+                <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 w-5 h-5 text-gray-400" />
+              )}
               <input
                 type="text"
                 value={formData.medicationName || medicationSearch}
@@ -160,31 +203,125 @@ export const MedicationModal = ({ isOpen, onClose, onSuccess, medication, patien
                   const value = e.target.value;
                   if (formData.medicationName) {
                     setFormData({ ...formData, medicationName: value });
+                    setSelectedFormularyMed(null);
                   } else {
                     setMedicationSearch(value);
                   }
                 }}
                 onFocus={() => setShowMedicationSuggestions(true)}
-                placeholder="Search or enter medication name"
+                placeholder="Search formulary (type at least 2 characters)"
                 className="w-full pl-10 pr-4 py-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
                 required
               />
-              {showMedicationSuggestions && filteredMedications.length > 0 && !formData.medicationName && (
-                <div className="absolute z-10 w-full mt-1 bg-white border border-gray-200 rounded-lg shadow-lg max-h-60 overflow-y-auto">
-                  {filteredMedications.map((med) => (
-                    <button
-                      key={med.name}
-                      type="button"
-                      onClick={() => handleSelectMedication(med.name, med.strength, med.form)}
-                      className="w-full p-3 text-left hover:bg-gray-50 border-b border-gray-100 last:border-b-0"
-                    >
-                      <p className="font-semibold text-gray-900">{med.name}</p>
-                      <p className="text-sm text-gray-600">{med.strength} - {med.form}</p>
-                    </button>
-                  ))}
+              {showMedicationSuggestions && !formData.medicationName && medicationSearch.length >= 2 && (
+                <div className="absolute z-10 w-full mt-1 bg-white border border-gray-200 rounded-lg shadow-lg max-h-80 overflow-y-auto">
+                  {isSearching ? (
+                    <div className="p-4 text-center text-gray-500">
+                      <Loader2 className="w-5 h-5 animate-spin mx-auto mb-2" />
+                      Searching formulary...
+                    </div>
+                  ) : formularyResults.length > 0 ? (
+                    <>
+                      {formularyResults.map((med) => (
+                        <button
+                          key={med.id}
+                          type="button"
+                          onClick={() => handleSelectFormularyMedication(med)}
+                          className="w-full p-3 text-left hover:bg-blue-50 border-b border-gray-100 last:border-b-0 transition-colors"
+                        >
+                          <div className="flex items-start justify-between gap-2">
+                            <div className="flex-1 min-w-0">
+                              <p className="font-semibold text-gray-900 truncate">{med.medication_name}</p>
+                              {med.generic_name && med.generic_name !== med.medication_name && (
+                                <p className="text-xs text-gray-500 truncate">Generic: {med.generic_name}</p>
+                              )}
+                              <p className="text-sm text-gray-600 mt-1">
+                                {med.therapeutic_class || 'General'}
+                              </p>
+                              <div className="flex flex-wrap gap-1 mt-1">
+                                {med.default_strengths?.slice(0, 3).map((str, idx) => (
+                                  <span key={idx} className="px-1.5 py-0.5 bg-gray-100 text-gray-700 rounded text-xs">
+                                    {str}
+                                  </span>
+                                ))}
+                                {(med.default_strengths?.length || 0) > 3 && (
+                                  <span className="text-xs text-gray-500">+{(med.default_strengths?.length || 0) - 3} more</span>
+                                )}
+                              </div>
+                            </div>
+                            <div className="flex flex-col items-end gap-1 flex-shrink-0">
+                              <span className={`px-2 py-0.5 rounded text-xs font-medium ${
+                                med.tier === 'Tier 1' ? 'bg-green-100 text-green-700' :
+                                med.tier === 'Tier 2' ? 'bg-blue-100 text-blue-700' :
+                                med.tier === 'Tier 3' ? 'bg-yellow-100 text-yellow-700' :
+                                'bg-orange-100 text-orange-700'
+                              }`}>
+                                {med.tier}
+                              </span>
+                              {med.is_controlled && (
+                                <span className="flex items-center gap-1 px-2 py-0.5 bg-red-100 text-red-700 rounded text-xs font-medium">
+                                  <Shield className="w-3 h-3" />
+                                  {med.dea_schedule || 'Controlled'}
+                                </span>
+                              )}
+                              {med.is_combination && (
+                                <span className="px-2 py-0.5 bg-purple-100 text-purple-700 rounded text-xs">
+                                  Combination
+                                </span>
+                              )}
+                            </div>
+                          </div>
+                        </button>
+                      ))}
+                      <button
+                        type="button"
+                        onClick={handleManualMedicationEntry}
+                        className="w-full p-3 text-left hover:bg-gray-50 border-t border-gray-200 text-blue-600 font-medium"
+                      >
+                        Use "{medicationSearch}" as custom medication
+                      </button>
+                    </>
+                  ) : (
+                    <div className="p-4">
+                      <p className="text-gray-500 text-center mb-3">No medications found in formulary</p>
+                      <button
+                        type="button"
+                        onClick={handleManualMedicationEntry}
+                        className="w-full px-4 py-2 bg-blue-50 text-blue-600 rounded-lg hover:bg-blue-100 font-medium transition-colors"
+                      >
+                        Use "{medicationSearch}" as custom medication
+                      </button>
+                    </div>
+                  )}
                 </div>
               )}
             </div>
+            {selectedFormularyMed && (
+              <div className="mt-2 p-3 bg-blue-50 border border-blue-200 rounded-lg">
+                <div className="flex items-start justify-between">
+                  <div>
+                    <p className="text-sm font-medium text-blue-900">Selected from formulary</p>
+                    <p className="text-xs text-blue-700 mt-0.5">{selectedFormularyMed.therapeutic_class}</p>
+                    {selectedFormularyMed.requires_prior_auth && (
+                      <p className="text-xs text-orange-600 mt-1 flex items-center gap-1">
+                        <AlertTriangle className="w-3 h-3" />
+                        Prior authorization required
+                      </p>
+                    )}
+                  </div>
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setSelectedFormularyMed(null);
+                      setFormData({ ...formData, medicationName: '', strength: '', isControlledSubstance: false });
+                    }}
+                    className="text-blue-600 hover:text-blue-700 text-sm"
+                  >
+                    Clear
+                  </button>
+                </div>
+              </div>
+            )}
           </div>
 
           <div className="grid grid-cols-2 gap-4">
@@ -192,14 +329,28 @@ export const MedicationModal = ({ isOpen, onClose, onSuccess, medication, patien
               <label className="block text-sm font-medium text-gray-700 mb-2">
                 Strength *
               </label>
-              <input
-                type="text"
-                value={formData.strength}
-                onChange={(e) => setFormData({ ...formData, strength: e.target.value })}
-                placeholder="e.g., 500mg, 10mcg"
-                className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
-                required
-              />
+              {selectedFormularyMed?.default_strengths && selectedFormularyMed.default_strengths.length > 0 ? (
+                <select
+                  value={formData.strength}
+                  onChange={(e) => setFormData({ ...formData, strength: e.target.value })}
+                  className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+                  required
+                >
+                  <option value="">Select strength</option>
+                  {selectedFormularyMed.default_strengths.map((str) => (
+                    <option key={str} value={str}>{str}</option>
+                  ))}
+                </select>
+              ) : (
+                <input
+                  type="text"
+                  value={formData.strength}
+                  onChange={(e) => setFormData({ ...formData, strength: e.target.value })}
+                  placeholder="e.g., 500mg, 10mcg"
+                  className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+                  required
+                />
+              )}
             </div>
 
             <div>
@@ -212,9 +363,15 @@ export const MedicationModal = ({ isOpen, onClose, onSuccess, medication, patien
                 className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
                 required
               >
-                {dosageForms.map((form) => (
-                  <option key={form} value={form}>{form}</option>
-                ))}
+                {selectedFormularyMed?.default_dosage_forms && selectedFormularyMed.default_dosage_forms.length > 0 ? (
+                  selectedFormularyMed.default_dosage_forms.map((form) => (
+                    <option key={form} value={form}>{form}</option>
+                  ))
+                ) : (
+                  dosageForms.map((form) => (
+                    <option key={form} value={form}>{form}</option>
+                  ))
+                )}
               </select>
             </div>
           </div>

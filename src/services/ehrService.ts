@@ -11,7 +11,8 @@ import {
   EncounterNote,
   PatientInsurance,
   BillingEncounter,
-  LabResult
+  LabResult,
+  DrugFormulary
 } from '../types';
 
 export const getUserRole = async (userId: string) => {
@@ -580,4 +581,47 @@ export const getEnhancedDashboardStats = async (userId: string) => {
     unsignedNotes: unsignedNotes?.length || 0,
     abnormalLabResults: abnormalLabs?.length || 0
   };
+};
+
+export const searchFormularyMedications = async (
+  searchTerm: string,
+  limit: number = 20
+): Promise<DrugFormulary[]> => {
+  if (!searchTerm || searchTerm.length < 2) {
+    return [];
+  }
+
+  const { data, error } = await supabase
+    .from('drug_formulary')
+    .select('*')
+    .eq('is_active', true)
+    .or(`medication_name.ilike.%${searchTerm}%,generic_name.ilike.%${searchTerm}%,therapeutic_class.ilike.%${searchTerm}%`)
+    .order('medication_name', { ascending: true })
+    .limit(limit);
+
+  if (error) throw error;
+  return data || [];
+};
+
+export const getFormularyMedicationById = async (id: string): Promise<DrugFormulary | null> => {
+  const { data, error } = await supabase
+    .from('drug_formulary')
+    .select('*')
+    .eq('id', id)
+    .maybeSingle();
+
+  if (error) throw error;
+  return data;
+};
+
+export const getFormularyByTherapeuticClass = async (therapeuticClass: string): Promise<DrugFormulary[]> => {
+  const { data, error } = await supabase
+    .from('drug_formulary')
+    .select('*')
+    .eq('is_active', true)
+    .ilike('therapeutic_class', `%${therapeuticClass}%`)
+    .order('medication_name', { ascending: true });
+
+  if (error) throw error;
+  return data || [];
 };

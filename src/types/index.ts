@@ -376,3 +376,27 @@ export interface BillingEncounter {
   billing_status: 'Draft' | 'Submitted' | 'Paid' | 'Denied' | 'Appealed';
   created_at: string;
 }
+
+export interface DrugFormulary {
+  id: string;
+  medication_name: string;
+  generic_name: string | null;
+  brand_names: string[] | null;
+  therapeutic_class: string | null;
+  drug_class: string | null;
+  tier: 'Tier 1' | 'Tier 2' | 'Tier 3' | 'Tier 4';
+  formulary_status: 'Preferred' | 'Non-Preferred' | 'Not Covered';
+  requires_prior_auth: boolean;
+  quantity_limits: string | null;
+  step_therapy_required: boolean;
+  route_of_administration: string[] | null;
+  default_dosage_forms: string[] | null;
+  default_strengths: string[] | null;
+  is_combination: boolean;
+  component_medications: string[] | null;
+  is_controlled: boolean;
+  dea_schedule: string | null;
+  is_active: boolean;
+  created_at: string;
+  updated_at: string;
+}
